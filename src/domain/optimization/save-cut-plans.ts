@@ -1,8 +1,13 @@
 import type { OptimizationResult } from './cut-optimizer';
 
+/** Database representation of material names. The database constraint uses
+ * `Resine` (without the accent), while the UI/domain uses `Résine`.
+ */
+type DbMaterial = 'Resine' | 'Aluco';
+
 export interface CutPlanInsert {
   project_id: string;
-  material: 'Résine' | 'Aluco';
+  material: DbMaterial;
   source_dimensions: {
     sheet_index: number;
     width: number;
@@ -15,10 +20,14 @@ export interface CutPlanInsert {
   waste: number;
 }
 
+function toDbMaterial(material: OptimizationResult['material']): DbMaterial {
+  return material === 'Résine' ? 'Resine' : 'Aluco';
+}
+
 export function toCutPlanInserts(projectId: string, result: OptimizationResult, kerf: number): CutPlanInsert[] {
   return result.sheets.map((sheet) => ({
     project_id: projectId,
-    material: result.material,
+    material: toDbMaterial(result.material),
     source_dimensions: {
       sheet_index: sheet.sheetIndex,
       width: sheet.width,
