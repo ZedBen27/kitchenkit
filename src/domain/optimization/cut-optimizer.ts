@@ -6,64 +6,120 @@ export interface PlacedPart { id: string; label: string; x: number; y: number; w
 export interface SheetPlan { material: Material; sheetIndex: number; width: number; height: number; placements: PlacedPart[]; usedArea: number; wasteArea: number; utilization: number; }
 export interface OptimizationResult { material: Material; sheets: SheetPlan[]; totalWasteArea: number; totalUtilization: number; }
 
-// Deterministic guillotine-style first-fit heuristic. Parts are sorted by longest side,
-// then area, and each part is placed in the currently best free rectangle. This is a
-// replaceable adapter: the domain API remains stable if an exact solver is introduced.
+export interface OptimizationInput {
+  material: Material;
+  sheet: SheetSize;
+  parts: CutPart[];
+  kerf?: number;
+}
+
+export interface CalculatedPartLike {
+  material: string;
+  partType: string;
+  length: number;
+  width?: number;
+  quantity: number;
+}
+
+export function partsFromCalculations(parts: CalculatedPartLike[], material: Material): CutPart[] {
+  return parts
+    .filter((p) => p.material === material && p.width !== undefined && p.length > 0 && p.width > 0)
+    .map((p, index) => ({
+      id: `${material.toLowerCase()}-${index + 1}`,
+      material,
+      width: p.length,
+      height: p.width as number,
+      quantity: p.quantity,
+      label: p.partType,
+      allowRotation: true,
+    }));
+}
+
+// Multi-start guillotine heuristic. It tries several deterministic sort orders and
+// keeps the layout with the lowest waste, then the fewest sheets, then highest use.
+// This is intentionally an adapter: an exact/OR solver can replace it later without
+// changing the domain API.
 export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPart[], kerf = 0): OptimizationResult {
-  const parts = input.flatMap((p) => Array.from({ length: p.quantity }, (_, i) => ({ ...p, id: `${p.id}-${i + 1}` })))
-    .sort((a, b) => Math.max(b.width, b.height) - Math.max(a.width, a.height) || (b.width * b.height) - (a.width * a.height));
+  if (sheet.width <= 0 || sheet.height <= 0) throw new Error('Sheet dimensions must be greater than zero.');
+  if (kerf < 0) throw new Error('Kerf cannot be negative.');
 
-  const plans: SheetPlan[] = [];
+  const expanded = input.flatMap((p) => Array.from({ length: p.quantity }, (_, i) => ({ ...p, id: `${p.id}-${i + 1}` })));
+  if (expanded.some((p) => p.width <= 0 || p.height <= 0)) throw new Error('Cut part dimensions must be greater than zero.');
+
+  const sorters = [
+    (a: CutPart, b: CutPart) => Math.max(b.width, b.height) - Math.max(a.width, a.height) || b.width * b.height - a.width * a.height,
+    (a: CutPart, b: CutPart) => b.width * b.height - a.width * a.height || Math.max(b.width, b.height) - Math.max(a.width, a.height),
+    (a: CutPart, b: CutPart) => b.height - a.height || b.width - a.width,
+    (a: CutPart, b: CutPart) => b.width - a.width || b.height - a.height,
+  ];
+
+  const candidates = sorters.map((sorter) => runGuillotine(material, sheet, [...expanded].sort(sorter), kerf));
+  return candidates.reduce((best, current) => isBetter(current, best) ? current : best);
+}
+
+function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], kerf: number): OptimizationResult {
   type FreeRect = { x: number; y: number; width: number; height: number };
+  const plans: SheetPlan[] = [];
   const freeRects: FreeRect[][] = [];
-
-  const area = (p: { width: number; height: number }) => p.width * p.height;
+  const sheetArea = sheet.width * sheet.height;
 
   for (const part of parts) {
     let best: { sheet: number; rect: number; rotated: boolean; score: number } | null = null;
+
     for (let s = 0; s < freeRects.length; s++) {
       for (let r = 0; r < freeRects[s].length; r++) {
         const fr = freeRects[s][r];
-        const orientations = part.allowRotation === false ? [[part.width, part.height, false] as const] : [[part.width, part.height, false] as const, [part.height, part.width, true] as const];
+        const orientations = part.allowRotation === false
+          ? [[part.width, part.height, false] as const]
+          : [[part.width, part.height, false] as const, [part.height, part.width, true] as const];
         for (const [w, h, rotated] of orientations) {
-          const fits = w + kerf <= fr.width && h + kerf <= fr.height;
-          if (!fits) continue;
-          const score = (fr.width * fr.height) - (w * h);
+          if (w + kerf > fr.width || h + kerf > fr.height) continue;
+          // Prefer the tightest short-side fit, then smallest leftover area.
+          const shortFit = Math.min(fr.width - w, fr.height - h);
+          const leftover = fr.width * fr.height - w * h;
+          const score = shortFit * 1_000_000 + leftover;
           if (!best || score < best.score) best = { sheet: s, rect: r, rotated, score };
         }
       }
     }
 
     if (!best) {
-      plans.push({ material, sheetIndex: plans.length + 1, width: sheet.width, height: sheet.height, placements: [], usedArea: 0, wasteArea: area(sheet), utilization: 0 });
+      const wFits = part.width + kerf <= sheet.width && part.height + kerf <= sheet.height;
+      const rFits = part.allowRotation !== false && part.height + kerf <= sheet.width && part.width + kerf <= sheet.height;
+      if (!wFits && !rFits) throw new Error(`Part ${part.label} (${part.width}×${part.height}) does not fit on sheet ${sheet.width}×${sheet.height}`);
+      const rotated = !wFits && rFits;
+      plans.push({ material, sheetIndex: plans.length + 1, width: sheet.width, height: sheet.height, placements: [], usedArea: 0, wasteArea: sheetArea, utilization: 0 });
       freeRects.push([{ x: 0, y: 0, width: sheet.width, height: sheet.height }]);
-      best = { sheet: freeRects.length - 1, rect: 0, rotated: false, score: Infinity };
-      const fr = freeRects[best.sheet][0];
-      if (part.width > fr.width || part.height > fr.height) {
-        if (part.allowRotation !== false && part.height <= fr.width && part.width <= fr.height) best.rotated = true;
-        else throw new Error(`Part ${part.label} (${part.width}×${part.height}) does not fit on sheet ${sheet.width}×${sheet.height}`);
-      }
+      best = { sheet: freeRects.length - 1, rect: 0, rotated, score: Infinity };
     }
 
     const fr = freeRects[best.sheet][best.rect];
     const w = best.rotated ? part.height : part.width;
     const h = best.rotated ? part.width : part.height;
-    const placed: PlacedPart = { id: part.id, label: part.label, x: fr.x, y: fr.y, width: w, height: h, rotated: best.rotated };
-    plans[best.sheet].placements.push(placed);
+    plans[best.sheet].placements.push({ id: part.id, label: part.label, x: fr.x, y: fr.y, width: w, height: h, rotated: best.rotated });
     plans[best.sheet].usedArea += w * h;
 
-    // Guillotine split: right and bottom rectangles. Kerf is treated as material lost around cuts.
     const remaining: FreeRect[] = [];
-    if (fr.width - w - kerf > 0) remaining.push({ x: fr.x + w + kerf, y: fr.y, width: fr.width - w - kerf, height: h });
-    if (fr.height - h - kerf > 0) remaining.push({ x: fr.x, y: fr.y + h + kerf, width: fr.width, height: fr.height - h - kerf });
+    const rightWidth = fr.width - w - kerf;
+    const bottomHeight = fr.height - h - kerf;
+    if (rightWidth > 0) remaining.push({ x: fr.x + w + kerf, y: fr.y, width: rightWidth, height: h });
+    if (bottomHeight > 0) remaining.push({ x: fr.x, y: fr.y + h + kerf, width: fr.width, height: bottomHeight });
     freeRects[best.sheet].splice(best.rect, 1, ...remaining);
   }
 
-  for (const p of plans) {
-    p.wasteArea = p.width * p.height - p.usedArea;
-    p.utilization = p.usedArea / (p.width * p.height);
+  for (const plan of plans) {
+    plan.wasteArea = sheetArea - plan.usedArea;
+    plan.utilization = plan.usedArea / sheetArea;
   }
-  const totalArea = plans.reduce((n, p) => n + p.width * p.height, 0);
-  const used = plans.reduce((n, p) => n + p.usedArea, 0);
+  const totalArea = plans.length * sheetArea;
+  const used = plans.reduce((sum, plan) => sum + plan.usedArea, 0);
   return { material, sheets: plans, totalWasteArea: totalArea - used, totalUtilization: totalArea ? used / totalArea : 0 };
+}
+
+function isBetter(a: OptimizationResult, b: OptimizationResult): boolean {
+  const eps = 1e-9;
+  if (a.totalWasteArea < b.totalWasteArea - eps) return true;
+  if (Math.abs(a.totalWasteArea - b.totalWasteArea) > eps) return false;
+  if (a.sheets.length !== b.sheets.length) return a.sheets.length < b.sheets.length;
+  return a.totalUtilization > b.totalUtilization;
 }
