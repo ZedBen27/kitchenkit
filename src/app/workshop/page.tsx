@@ -1,29 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 type Status = 'in_progress' | 'completed' | 'cancelled';
-type Job = { id: string; project: string; client: string; boxes: number; status: Status; createdAt: string };
-
-const initialJobs: Job[] = [
-  { id: 'PRJ-001', project: 'مطبخ أحمد', client: 'أحمد', boxes: 4, status: 'in_progress', createdAt: '2026-10-02' },
-  { id: 'PRJ-002', project: 'خزانة سارة', client: 'سارة', boxes: 2, status: 'in_progress', createdAt: '2026-10-01' },
-];
-
+type Job = { id: string; project_id: string; project: string; client: string; boxes: number; status: Status; createdAt: string };
 const labels: Record<Status, string> = { in_progress: 'قيد التنفيذ', completed: 'تم التنفيذ', cancelled: 'ملغى' };
 
 export default function WorkshopPage() {
-  const [jobs, setJobs] = useState(initialJobs);
-  const updateStatus = (id: string, status: Status) => setJobs((items) => items.map((job) => job.id === id ? { ...job, status } : job));
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState('');
 
-  return <main dir="rtl" className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <header className="mb-8"><p className="mb-2 text-sm text-[hsl(var(--muted-foreground))]">التشغيل</p><h1 className="text-3xl font-bold">الورشة</h1><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">المشاريع المعتمدة للتنفيذ، مع حالة واضحة وإجراءات الورشة.</p></header>
-      <div className="overflow-hidden rounded-xl border bg-[hsl(var(--card))] shadow-sm">
-        <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-4 text-right">المشروع</th><th className="p-4 text-right">العميل</th><th className="p-4 text-right">الصناديق</th><th className="p-4 text-right">الحالة</th><th className="p-4 text-right">الإجراءات</th></tr></thead>
-          <tbody>{jobs.map((job) => <tr key={job.id} className="border-t"><td className="p-4"><div className="font-semibold">{job.project}</div><div className="text-xs text-[hsl(var(--muted-foreground))]">{job.id}</div></td><td className="p-4">{job.client}</td><td className="p-4">{job.boxes}</td><td className="p-4"><span className="rounded-full bg-[hsl(var(--muted))] px-3 py-1">{labels[job.status]}</span></td><td className="p-4"><div className="flex flex-wrap gap-2">{job.status === 'in_progress' && <><button onClick={() => updateStatus(job.id, 'completed')} className="rounded-md bg-[hsl(var(--success))] px-3 py-2 font-medium text-[hsl(var(--success-foreground))]">تم التنفيذ</button><button onClick={() => updateStatus(job.id, 'cancelled')} className="rounded-md border px-3 py-2 text-[hsl(var(--destructive))]">إلغاء المشروع</button></>}<button className="rounded-md border px-3 py-2">وثائق الورشة</button></div></td></tr>)}</tbody>
-        </table></div>
-      </div>
-    </div>
-  </main>;
+  async function load() {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('سجّل الدخول للوصول إلى الورشة.');
+      const { data: membership } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).limit(1).maybeSingle();
+      if (!membership) throw new Error('لا توجد مؤسسة مرتبطة بهذا الحساب.');
+      const { data: jobRows, error: jobError } = await supabase.from('workshop_jobs').select('id,project_id,status,started_at').eq('organization_id', membership.organization_id).order('started_at', { ascending: false });
+      if (jobError) throw jobError;
+      const projectIds = (jobRows || []).map(j => j.project_id);
+      if (!projectIds.length) { setJobs([]); return; }
+      const [{ data: projects, error: projectsError }, { data: boxes, error: boxesError }] = await Promise.all([
+        supabase.from('projects').select('id,name,client_id').in('id', projectIds),
+        supabase.from('project_boxes').select('project_id').in('project_id', projectIds),
+      ]);
+      if (projectsError) throw projectsError;
+      if (boxesError) throw boxesError;
+      const clientIds = (projects || []).map(p => p.client_id).filter(Boolean);
+      const { data: clients } = clientIds.length ? await supabase.from('clients').select('id,name').in('id', clientIds) : { data: [] };
+      const projectMap = new Map((projects || []).map(p => [p.id, p]));
+      const clientMap = new Map((clients || []).map(c => [c.id, c.name]));
+      const countMap = new Map<string, number>();
+      (boxes || []).forEach(b => countMap.set(b.project_id, (countMap.get(b.project_id) || 0) + 1));
+      setJobs((jobRows || []).map(j => { const p = projectMap.get(j.project_id); return { id: j.id, project_id: j.project_id, project: p?.name || 'مشروع', client: p?.client_id ? clientMap.get(p.client_id) || '—' : '—', boxes: countMap.get(j.project_id) || 0, status: j.status as Status, createdAt: j.started_at || '' }; }));
+    } catch (err) { setError(err instanceof Error ? err.message : 'تعذر تحميل الورشة.'); } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function updateStatus(job: Job, status: Status) {
+    setBusy(job.id); setError('');
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error: jobError } = await supabase.from('workshop_jobs').update({ status, completed_at: status === 'completed' ? new Date().toISOString() : null }).eq('id', job.id);
+      if (jobError) throw jobError;
+      const { error: projectError } = await supabase.from('projects').update({ status }).eq('id', job.project_id);
+      if (projectError) throw projectError;
+      setJobs(items => items.map(item => item.id === job.id ? { ...item, status } : item));
+    } catch (err) { setError(err instanceof Error ? err.message : 'تعذر تحديث الحالة.'); } finally { setBusy(''); }
+  }
+
+  return <main dir="rtl" className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"><div className="mx-auto max-w-7xl px-6 py-8">
+    <header className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 text-sm text-[hsl(var(--muted-foreground))]">التشغيل</p><h1 className="text-3xl font-bold">الورشة</h1><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">المشاريع المعتمدة للتنفيذ، مع حالة واضحة وإجراءات الورشة.</p></div><Link href="/" className="rounded-lg border px-4 py-2.5 text-sm">لوحة التحكم</Link></header>
+    {error && <div className="mb-5 rounded-lg border p-4 text-sm text-[hsl(var(--destructive))]">{error}</div>}
+    <div className="overflow-hidden rounded-xl border bg-[hsl(var(--card))] shadow-sm"><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-4 text-right">المشروع</th><th className="p-4 text-right">العميل</th><th className="p-4 text-right">الصناديق</th><th className="p-4 text-right">الحالة</th><th className="p-4 text-right">الإجراءات</th></tr></thead><tbody>{loading ? <tr><td colSpan={5} className="p-6">جارٍ التحميل...</td></tr> : jobs.map(job => <tr key={job.id} className="border-t"><td className="p-4"><Link className="font-semibold underline" href={`/workshop/${job.id}`}>{job.project}</Link><div className="text-xs text-[hsl(var(--muted-foreground))]">{job.id}</div></td><td className="p-4">{job.client}</td><td className="p-4">{job.boxes}</td><td className="p-4"><span className="rounded-full bg-[hsl(var(--muted))] px-3 py-1">{labels[job.status]}</span></td><td className="p-4"><div className="flex flex-wrap gap-2">{job.status === 'in_progress' && <><button disabled={busy === job.id} onClick={() => updateStatus(job, 'completed')} className="rounded-md border px-3 py-2 font-medium">تم التنفيذ</button><button disabled={busy === job.id} onClick={() => updateStatus(job, 'cancelled')} className="rounded-md border px-3 py-2 text-[hsl(var(--destructive))]">إلغاء المشروع</button></>}<Link href={`/workshop/${job.id}/documents`} className="rounded-md border px-3 py-2">وثائق الورشة</Link><Link href={`/workshop/${job.id}/optimizer`} className="rounded-md border px-3 py-2">Cut Optimizer</Link></div></td></tr>)}{!loading && !jobs.length && <tr><td colSpan={5} className="p-8 text-center text-[hsl(var(--muted-foreground))]">لا توجد مشاريع معتمدة للورشة.</td></tr>}</tbody></table></div></div>
+  </div></main>;
 }
