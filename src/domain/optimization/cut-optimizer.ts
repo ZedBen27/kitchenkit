@@ -1,16 +1,18 @@
 export type Material = 'Résine' | 'Aluco';
+export type OptimizationObjective = 'min-sheets' | 'min-waste';
 
 export interface SheetSize { width: number; height: number; }
 export interface CutPart { id: string; material: Material; width: number; height: number; quantity: number; label: string; allowRotation?: boolean; }
 export interface PlacedPart { id: string; label: string; x: number; y: number; width: number; height: number; rotated: boolean; }
 export interface SheetPlan { material: Material; sheetIndex: number; width: number; height: number; placements: PlacedPart[]; usedArea: number; wasteArea: number; utilization: number; }
-export interface OptimizationResult { material: Material; sheets: SheetPlan[]; totalWasteArea: number; totalUtilization: number; }
+export interface OptimizationResult { material: Material; objective: OptimizationObjective; sheets: SheetPlan[]; totalWasteArea: number; totalUtilization: number; }
 
 export interface OptimizationInput {
   material: Material;
   sheet: SheetSize;
   parts: CutPart[];
   kerf?: number;
+  objective?: OptimizationObjective;
 }
 
 export interface CalculatedPartLike {
@@ -35,10 +37,10 @@ export function partsFromCalculations(parts: CalculatedPartLike[], material: Mat
     }));
 }
 
-// Multi-start guillotine heuristic. It first minimizes the number of sheets,
-// then minimizes total waste, then maximizes utilization. This keeps the
-// domain API replaceable by an exact/OR solver later without changing callers.
-export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPart[], kerf = 0): OptimizationResult {
+// Multi-start guillotine heuristic. The caller chooses the primary objective:
+// minimum physical sheets or minimum waste. The remaining metrics are used as
+// deterministic tie-breakers so the API can later be replaced by an exact solver.
+export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPart[], kerf = 0, objective: OptimizationObjective = 'min-sheets'): OptimizationResult {
   if (sheet.width <= 0 || sheet.height <= 0) throw new Error('Sheet dimensions must be greater than zero.');
   if (kerf < 0) throw new Error('Kerf cannot be negative.');
 
@@ -52,11 +54,11 @@ export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPar
     (a: CutPart, b: CutPart) => b.width - a.width || b.height - a.height,
   ];
 
-  const candidates = sorters.map((sorter) => runGuillotine(material, sheet, [...expanded].sort(sorter), kerf));
-  return candidates.reduce((best, current) => isBetter(current, best) ? current : best);
+  const candidates = sorters.map((sorter) => runGuillotine(material, sheet, [...expanded].sort(sorter), kerf, objective));
+  return candidates.reduce((best, current) => isBetter(current, best, objective));
 }
 
-function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], kerf: number): OptimizationResult {
+function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], kerf: number, objective: OptimizationObjective): OptimizationResult {
   type FreeRect = { x: number; y: number; width: number; height: number };
   const plans: SheetPlan[] = [];
   const freeRects: FreeRect[][] = [];
@@ -73,7 +75,6 @@ function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], k
           : [[part.width, part.height, false] as const, [part.height, part.width, true] as const];
         for (const [w, h, rotated] of orientations) {
           if (w + kerf > fr.width || h + kerf > fr.height) continue;
-          // Prefer the tightest short-side fit, then smallest leftover area.
           const shortFit = Math.min(fr.width - w, fr.height - h);
           const leftover = fr.width * fr.height - w * h;
           const score = shortFit * 1_000_000 + leftover;
@@ -112,16 +113,20 @@ function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], k
   }
   const totalArea = plans.length * sheetArea;
   const used = plans.reduce((sum, plan) => sum + plan.usedArea, 0);
-  return { material, sheets: plans, totalWasteArea: totalArea - used, totalUtilization: totalArea ? used / totalArea : 0 };
+  return { material, objective, sheets: plans, totalWasteArea: totalArea - used, totalUtilization: totalArea ? used / totalArea : 0 };
 }
 
-function isBetter(a: OptimizationResult, b: OptimizationResult): boolean {
+function isBetter(a: OptimizationResult, b: OptimizationResult, objective: OptimizationObjective): boolean {
   const eps = 1e-9;
-  // Primary objective: use the fewest physical sheets possible.
+  if (objective === 'min-waste') {
+    if (a.totalWasteArea < b.totalWasteArea - eps) return true;
+    if (Math.abs(a.totalWasteArea - b.totalWasteArea) > eps) return false;
+    if (a.sheets.length !== b.sheets.length) return a.sheets.length < b.sheets.length;
+    return a.totalUtilization > b.totalUtilization;
+  }
+
   if (a.sheets.length !== b.sheets.length) return a.sheets.length < b.sheets.length;
-  // Secondary objective: among layouts using the same number of sheets, minimize waste.
   if (a.totalWasteArea < b.totalWasteArea - eps) return true;
   if (Math.abs(a.totalWasteArea - b.totalWasteArea) > eps) return false;
-  // Tertiary objective: maximize utilization.
   return a.totalUtilization > b.totalUtilization;
 }
