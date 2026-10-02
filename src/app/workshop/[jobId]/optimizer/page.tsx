@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { optimizeCuts, partsFromCalculations, CutPart } from '@/domain/optimization/cut-optimizer';
+import { optimizeCuts, partsFromCalculations } from '@/domain/optimization/cut-optimizer';
 import { getLabelLayout } from '@/domain/optimization/label-layout';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { toCutPlanInserts } from '@/domain/optimization/save-cut-plans';
@@ -20,7 +20,17 @@ export default function CutOptimizerPage() {
 
   useEffect(() => { (async () => { try { const supabase = getSupabaseBrowserClient(); const { data: job, error: je } = await supabase.from('workshop_jobs').select('project_id').eq('id', params.jobId).single(); if (je) throw je; setProjectId(job.project_id); const [{ data: project, error: pe }, { data: boxes, error: be }] = await Promise.all([supabase.from('projects').select('name').eq('id', job.project_id).single(), supabase.from('project_boxes').select('id').eq('project_id', job.project_id)]); if (pe) throw pe; if (be) throw be; setProjectName(project.name); const boxIds = (boxes || []).map(b => b.id); if (!boxIds.length) return; const { data: rows, error: partError } = await supabase.from('box_parts').select('id,material,part_type,length,width,quantity').in('box_id', boxIds); if (partError) throw partError; setParts((rows || []) as DbPart[]); } catch (err) { setError(err instanceof Error ? err.message : 'تعذر تحميل قطع المشروع.'); } finally { setLoading(false); } })(); }, [params.jobId]);
 
-  const calculated = useMemo(() => parts.filter(p => p.width != null && Number(p.width) > 0 && Number(p.length) > 0), [parts]);
+  // Adapt the database shape (part_type) to the domain optimizer shape (partType).
+  // Keeping this boundary explicit avoids leaking Supabase column names into the domain layer.
+  const calculated = useMemo(() => parts
+    .filter(p => p.width != null && Number(p.width) > 0 && Number(p.length) > 0)
+    .map(p => ({
+      material: p.material,
+      partType: p.part_type,
+      length: Number(p.length),
+      width: Number(p.width),
+      quantity: Number(p.quantity),
+    })), [parts]);
   const resinParts = useMemo(() => partsFromCalculations(calculated, 'Résine'), [calculated]);
   const alucoParts = useMemo(() => partsFromCalculations(calculated, 'Aluco'), [calculated]);
   const resin = useMemo(() => resinParts.length ? optimizeCuts('Résine', { width: Number(resinW), height: Number(resinH) }, resinParts, Number(kerf)) : null, [resinParts, resinW, resinH, kerf]);
