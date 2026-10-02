@@ -33,18 +33,20 @@ export function partsFromCalculations(parts: CalculatedPartLike[], material: Mat
       height: p.width as number,
       quantity: p.quantity,
       label: p.partType,
+      // All calculated rectangular parts may be rotated by the optimizer.
       allowRotation: true,
     }));
 }
 
-// Multi-start guillotine heuristic. The caller chooses the primary objective:
-// minimum physical sheets or minimum waste. The remaining metrics are used as
-// deterministic tie-breakers so the API can later be replaced by an exact solver.
+// Multi-start guillotine heuristic with rotation enabled for every calculated
+// rectangular part. The optimizer evaluates both orientations at every free
+// rectangle and runs several different part orderings, then keeps the plan
+// using the fewest physical sheets. This is a heuristic, not an exact solver.
 export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPart[], kerf = 0, objective: OptimizationObjective = 'min-sheets'): OptimizationResult {
   if (sheet.width <= 0 || sheet.height <= 0) throw new Error('Sheet dimensions must be greater than zero.');
   if (kerf < 0) throw new Error('Kerf cannot be negative.');
 
-  const expanded = input.flatMap((p) => Array.from({ length: p.quantity }, (_, i) => ({ ...p, id: `${p.id}-${i + 1}` })));
+  const expanded = input.flatMap((p) => Array.from({ length: p.quantity }, (_, i) => ({ ...p, id: `${p.id}-${i + 1}`, allowRotation: p.allowRotation !== false })));
   if (expanded.some((p) => p.width <= 0 || p.height <= 0)) throw new Error('Cut part dimensions must be greater than zero.');
 
   const sorters = [
@@ -52,6 +54,10 @@ export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPar
     (a: CutPart, b: CutPart) => b.width * b.height - a.width * a.height || Math.max(b.width, b.height) - Math.max(a.width, a.height),
     (a: CutPart, b: CutPart) => b.height - a.height || b.width - a.width,
     (a: CutPart, b: CutPart) => b.width - a.width || b.height - a.height,
+    (a: CutPart, b: CutPart) => Math.min(b.width, b.height) - Math.min(a.width, a.height) || b.width * b.height - a.width * a.height,
+    (a: CutPart, b: CutPart) => (b.width + b.height) - (a.width + a.height) || b.width * b.height - a.width * a.height,
+    (a: CutPart, b: CutPart) => Math.abs(b.width - b.height) - Math.abs(a.width - a.height) || b.width * b.height - a.width * a.height,
+    (a: CutPart, b: CutPart) => Math.abs(a.width - a.height) - Math.abs(b.width - b.height) || b.width * b.height - a.width * a.height,
   ];
 
   const candidates = sorters.map((sorter) => runGuillotine(material, sheet, [...expanded].sort(sorter), kerf, objective));
@@ -73,11 +79,18 @@ function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], k
         const orientations = part.allowRotation === false
           ? [[part.width, part.height, false] as const]
           : [[part.width, part.height, false] as const, [part.height, part.width, true] as const];
+
         for (const [w, h, rotated] of orientations) {
           if (w + kerf > fr.width || h + kerf > fr.height) continue;
-          const shortFit = Math.min(fr.width - w, fr.height - h);
+
+          // Prefer placements that leave the tightest usable rectangle. Area is
+          // the main signal; the short side is the tie-breaker. This works for
+          // both orientations and helps rotations close gaps instead of merely
+          // placing each part in its original orientation.
           const leftover = fr.width * fr.height - w * h;
-          const score = shortFit * 1_000_000 + leftover;
+          const shortFit = Math.min(fr.width - w, fr.height - h);
+          const longFit = Math.max(fr.width - w, fr.height - h);
+          const score = leftover * 1_000_000 + shortFit * 1_000 + longFit;
           if (!best || score < best.score) best = { sheet: s, rect: r, rotated, score };
         }
       }
@@ -111,9 +124,16 @@ function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], k
     plan.wasteArea = sheetArea - plan.usedArea;
     plan.utilization = plan.usedArea / sheetArea;
   }
+
   const totalArea = plans.length * sheetArea;
   const used = plans.reduce((sum, plan) => sum + plan.usedArea, 0);
-  return { material, objective, sheets: plans, totalWasteArea: totalArea - used, totalUtilization: totalArea ? used / totalArea : 0 };
+  return {
+    material,
+    objective,
+    sheets: plans,
+    totalWasteArea: totalArea - used,
+    totalUtilization: totalArea ? used / totalArea : 0,
+  };
 }
 
 function isBetter(a: OptimizationResult, b: OptimizationResult, objective: OptimizationObjective): boolean {
