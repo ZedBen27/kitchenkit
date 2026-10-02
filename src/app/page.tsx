@@ -24,7 +24,7 @@ export default function Dashboard() {
         setEmail(user.email || '');
         const { data: membership, error: membershipError } = await supabase.from('organization_members').select('organization_id').eq('user_id', user.id).limit(1).maybeSingle();
         if (membershipError) throw membershipError;
-        if (!membership) { setError('الحساب لا يملك مساحة عمل بعد. أنشئ مساحة العمل من Supabase ثم أعد الدخول.'); return; }
+        if (!membership) { router.replace('/onboarding'); return; }
         const { data, error: projectError } = await supabase.from('projects').select('id,name,status,created_at').eq('organization_id', membership.organization_id).order('created_at', { ascending: false }).limit(20);
         if (projectError) throw projectError;
         setProjects((data || []) as Project[]);
