@@ -5,8 +5,10 @@ import type { Material, OptimizationObjective, OptimizationResult, CutPart, Shee
 export const runtime = 'nodejs';
 
 const MM_PER_M = 1000;
+const MM2_PER_M2 = MM_PER_M * MM_PER_M;
 const toMm = (value: number) => Math.max(1, Math.round(value * MM_PER_M));
 const fromMm = (value: number) => value / MM_PER_M;
+const fromMm2 = (value: number) => value / MM2_PER_M2;
 
 export async function POST(request: Request) {
   try {
@@ -82,8 +84,10 @@ export async function POST(request: Request) {
         width: fromMm(layout.width),
         height: fromMm(layout.height),
         placements,
-        usedArea: fromMm(layout.used_area),
-        wasteArea: fromMm(layout.waste_area),
+        // layout.used_area / waste_area are areas in mm², so they must be
+        // converted with 1,000² rather than the linear mm→m conversion.
+        usedArea: fromMm2(layout.used_area),
+        wasteArea: fromMm2(layout.waste_area),
         utilization: layout.used_area / (layout.width * layout.height),
       };
     });
@@ -95,9 +99,9 @@ export async function POST(request: Request) {
       material,
       objective,
       sheets,
-      totalWasteArea: solution.total_waste_area / (MM_PER_M * MM_PER_M),
+      totalWasteArea: solution.total_waste_area / MM2_PER_M2,
       totalUtilization: totalSheetArea > 0 ? usedArea / totalSheetArea : 0,
-      };
+    };
 
     return NextResponse.json(result);
   } catch (error) {
