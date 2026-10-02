@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { optimizeCuts, partsFromCalculations, type OptimizationObjective } from '@/domain/optimization/cut-optimizer';
+import { optimizeCuts, partsFromCalculations } from '@/domain/optimization/cut-optimizer';
 import { getLabelLayout } from '@/domain/optimization/label-layout';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { toCutPlanInserts } from '@/domain/optimization/save-cut-plans';
 
+type OptimizationObjective = 'min-sheets' | 'min-waste';
 type DbPart = { id: string; box_id: string; material: string; part_type: string; length: number; width: number | null; quantity: number };
 type DbBox = { id: string; number: number };
 
