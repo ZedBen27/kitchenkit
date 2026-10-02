@@ -39,10 +39,15 @@ describe('calculateBox', () => {
     expect(findPart(result, 'Profile', pProfile)).toMatchObject({ length: 0.6, quantity: 4 });
   });
 
-  it('uses dimension position, not numeric ordering, for the third example', () => {
-    const result = calculateBox(box({ length: 0.7, height: 1.2, depth: 0.5 }), settings);
-    expect(findPart(result, 'Profile', '1Départ')).toMatchObject({ length: 0.7, quantity: 2 });
-    expect(findPart(result, 'Profile', '2 Départ Long')).toMatchObject({ length: 0.7, quantity: 2 });
+  it.each([
+    [0.9, 0.8, 0.6],
+    [1.2, 0.7, 0.5],
+    [0.7, 1.2, 0.5],
+  ] as const)('keeps L/H/P by position for example dimensions %s × %s × %s', (length, height, depth) => {
+    const result = calculateBox(box({ length, height, depth }), settings);
+    expect(findPart(result, 'Profile', '1Départ')).toMatchObject({ length, quantity: 2 });
+    expect(findPart(result, 'Profile', '1Départ')).not.toMatchObject({ length: height });
+    expect(result.parts.some(p => p.material === 'Profile' && p.length === depth && p.quantity === 4)).toBe(true);
   });
 
   it('calculates Potager resin faces and feet', () => {
@@ -56,6 +61,7 @@ describe('calculateBox', () => {
 
   it('calculates Element resin including top and no feet', () => {
     const result = calculateBox(box({ boxType: 'Element' }), settings);
+    expect(result.parts.filter((p) => p.material === 'Résine')).toHaveLength(5);
     expect(findPart(result, 'Résine', 'top')).toMatchObject({ length: 0.847, width: 0.547 });
     expect(findAccessory(result, 'Pied')).toBeUndefined();
   });
