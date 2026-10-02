@@ -1,3 +1,5 @@
+import { solve2d, type TwoDSolution } from '@0xdoublesharp/bin-packing-wasm/two-d';
+
 export type Material = 'Résine' | 'Aluco';
 export type OptimizationObjective = 'min-sheets' | 'min-waste';
 
@@ -33,120 +35,113 @@ export function partsFromCalculations(parts: CalculatedPartLike[], material: Mat
       height: p.width as number,
       quantity: p.quantity,
       label: p.partType,
-      // All calculated rectangular parts may be rotated by the optimizer.
       allowRotation: true,
     }));
 }
 
-// Multi-start guillotine heuristic with rotation enabled for every calculated
-// rectangular part. The optimizer evaluates both orientations at every free
-// rectangle and runs several different part orderings, then keeps the plan
-// using the fewest physical sheets. This is a heuristic, not an exact solver.
-export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPart[], kerf = 0, objective: OptimizationObjective = 'min-sheets'): OptimizationResult {
-  if (sheet.width <= 0 || sheet.height <= 0) throw new Error('Sheet dimensions must be greater than zero.');
-  if (kerf < 0) throw new Error('Kerf cannot be negative.');
+// The previous in-house heuristic has been replaced by the Rust/WASM 2D
+// rectangular packing engine. Dimensions are converted to millimetres because
+// the external solver uses integer geometry; the application continues to use
+// metres everywhere else.
+const MM_PER_M = 1000;
 
-  const expanded = input.flatMap((p) => Array.from({ length: p.quantity }, (_, i) => ({ ...p, id: `${p.id}-${i + 1}`, allowRotation: p.allowRotation !== false })));
-  if (expanded.some((p) => p.width <= 0 || p.height <= 0)) throw new Error('Cut part dimensions must be greater than zero.');
-
-  const sorters = [
-    (a: CutPart, b: CutPart) => Math.max(b.width, b.height) - Math.max(a.width, a.height) || b.width * b.height - a.width * a.height,
-    (a: CutPart, b: CutPart) => b.width * b.height - a.width * a.height || Math.max(b.width, b.height) - Math.max(a.width, a.height),
-    (a: CutPart, b: CutPart) => b.height - a.height || b.width - a.width,
-    (a: CutPart, b: CutPart) => b.width - a.width || b.height - a.height,
-    (a: CutPart, b: CutPart) => Math.min(b.width, b.height) - Math.min(a.width, a.height) || b.width * b.height - a.width * a.height,
-    (a: CutPart, b: CutPart) => (b.width + b.height) - (a.width + a.height) || b.width * b.height - a.width * a.height,
-    (a: CutPart, b: CutPart) => Math.abs(b.width - b.height) - Math.abs(a.width - a.height) || b.width * b.height - a.width * a.height,
-    (a: CutPart, b: CutPart) => Math.abs(a.width - a.height) - Math.abs(b.width - b.height) || b.width * b.height - a.width * a.height,
-  ];
-
-  const candidates = sorters.map((sorter) => runGuillotine(material, sheet, [...expanded].sort(sorter), kerf, objective));
-  return candidates.reduce((best, current) => isBetter(current, best, objective) ? current : best);
+function toMm(value: number): number {
+  return Math.max(1, Math.round(value * MM_PER_M));
 }
 
-function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], kerf: number, objective: OptimizationObjective): OptimizationResult {
-  type FreeRect = { x: number; y: number; width: number; height: number };
-  const plans: SheetPlan[] = [];
-  const freeRects: FreeRect[][] = [];
-  const sheetArea = sheet.width * sheet.height;
+function fromMm(value: number): number {
+  return value / MM_PER_M;
+}
 
-  for (const part of parts) {
-    let best: { sheet: number; rect: number; rotated: boolean; score: number } | null = null;
+function solveWithExternalEngine(material: Material, sheet: SheetSize, parts: CutPart[], kerf: number): OptimizationResult {
+  const sheetWidth = toMm(sheet.width);
+  const sheetHeight = toMm(sheet.height);
+  const sheetKerf = Math.max(0, toMm(kerf));
 
-    for (let s = 0; s < freeRects.length; s++) {
-      for (let r = 0; r < freeRects[s].length; r++) {
-        const fr = freeRects[s][r];
-        const orientations = part.allowRotation === false
-          ? [[part.width, part.height, false] as const]
-          : [[part.width, part.height, false] as const, [part.height, part.width, true] as const];
+  const demands = parts.map((part) => ({
+    name: `${part.id}::${part.label}`,
+    width: toMm(part.width),
+    height: toMm(part.height),
+    quantity: Math.max(1, Math.round(part.quantity)),
+    can_rotate: part.allowRotation !== false,
+  }));
 
-        for (const [w, h, rotated] of orientations) {
-          if (w + kerf > fr.width || h + kerf > fr.height) continue;
+  const solution: TwoDSolution = solve2d(
+    {
+      sheets: [{
+        name: `${material}-sheet`,
+        width: sheetWidth,
+        height: sheetHeight,
+        cost: 1,
+        kerf: sheetKerf,
+      }],
+      demands,
+    },
+    {
+      // Auto compares the strong 2D strategies. Keeping the guillotine
+      // constraint means the resulting layout remains suitable for panel-saw
+      // style cutting instead of producing a layout that is only theoretical.
+      algorithm: 'auto',
+      guillotine_required: true,
+      beam_width: 24,
+      multistart_runs: 32,
+      seed: 42,
+    },
+  );
 
-          // Prefer placements that leave the tightest usable rectangle. Area is
-          // the main signal; the short side is the tie-breaker. This works for
-          // both orientations and helps rotations close gaps instead of merely
-          // placing each part in its original orientation.
-          const leftover = fr.width * fr.height - w * h;
-          const shortFit = Math.min(fr.width - w, fr.height - h);
-          const longFit = Math.max(fr.width - w, fr.height - h);
-          const score = leftover * 1_000_000 + shortFit * 1_000 + longFit;
-          if (!best || score < best.score) best = { sheet: s, rect: r, rotated, score };
-        }
-      }
-    }
-
-    if (!best) {
-      const wFits = part.width + kerf <= sheet.width && part.height + kerf <= sheet.height;
-      const rFits = part.allowRotation !== false && part.height + kerf <= sheet.width && part.width + kerf <= sheet.height;
-      if (!wFits && !rFits) throw new Error(`Part ${part.label} (${part.width}×${part.height}) does not fit on sheet ${sheet.width}×${sheet.height}`);
-      const rotated = !wFits && rFits;
-      plans.push({ material, sheetIndex: plans.length + 1, width: sheet.width, height: sheet.height, placements: [], usedArea: 0, wasteArea: sheetArea, utilization: 0 });
-      freeRects.push([{ x: 0, y: 0, width: sheet.width, height: sheet.height }]);
-      best = { sheet: freeRects.length - 1, rect: 0, rotated, score: Infinity };
-    }
-
-    const fr = freeRects[best.sheet][best.rect];
-    const w = best.rotated ? part.height : part.width;
-    const h = best.rotated ? part.width : part.height;
-    plans[best.sheet].placements.push({ id: part.id, label: part.label, x: fr.x, y: fr.y, width: w, height: h, rotated: best.rotated });
-    plans[best.sheet].usedArea += w * h;
-
-    const remaining: FreeRect[] = [];
-    const rightWidth = fr.width - w - kerf;
-    const bottomHeight = fr.height - h - kerf;
-    if (rightWidth > 0) remaining.push({ x: fr.x + w + kerf, y: fr.y, width: rightWidth, height: h });
-    if (bottomHeight > 0) remaining.push({ x: fr.x, y: fr.y + h + kerf, width: fr.width, height: bottomHeight });
-    freeRects[best.sheet].splice(best.rect, 1, ...remaining);
+  if (solution.unplaced.length) {
+    const first = solution.unplaced[0];
+    throw new Error(`تعذر وضع القطعة ${first.name} (${fromMm(first.width).toFixed(3)}×${fromMm(first.height).toFixed(3)} m) على اللوح.`);
   }
 
-  for (const plan of plans) {
-    plan.wasteArea = sheetArea - plan.usedArea;
-    plan.utilization = plan.usedArea / sheetArea;
-  }
+  const sheets: SheetPlan[] = solution.layouts.map((layout, layoutIndex) => {
+    const placements = layout.placements.map((placement, placementIndex) => {
+      const separator = placement.name.indexOf('::');
+      const label = separator >= 0 ? placement.name.slice(separator + 2) : placement.name;
+      const id = separator >= 0 ? placement.name.slice(0, separator) : `external-${layoutIndex + 1}-${placementIndex + 1}`;
+      return {
+        id: `${id}-${layoutIndex + 1}-${placementIndex + 1}`,
+        label,
+        x: fromMm(placement.x),
+        y: fromMm(placement.y),
+        width: fromMm(placement.width),
+        height: fromMm(placement.height),
+        rotated: placement.rotated,
+      };
+    });
 
-  const totalArea = plans.length * sheetArea;
-  const used = plans.reduce((sum, plan) => sum + plan.usedArea, 0);
+    return {
+      material,
+      sheetIndex: layoutIndex + 1,
+      width: fromMm(layout.width),
+      height: fromMm(layout.height),
+      placements,
+      usedArea: fromMm(layout.used_area),
+      wasteArea: fromMm(layout.waste_area),
+      utilization: layout.used_area / (layout.width * layout.height),
+    };
+  });
+
+  const totalSheetArea = sheets.reduce((sum, current) => sum + current.width * current.height, 0);
+  const usedArea = sheets.reduce((sum, current) => sum + current.usedArea, 0);
+
   return {
     material,
-    objective,
-    sheets: plans,
-    totalWasteArea: totalArea - used,
-    totalUtilization: totalArea ? used / totalArea : 0,
+    objective: 'min-sheets',
+    sheets,
+    totalWasteArea: fromMm(0) + solution.total_waste_area / (MM_PER_M * MM_PER_M),
+    totalUtilization: totalSheetArea > 0 ? usedArea / totalSheetArea : 0,
   };
 }
 
-function isBetter(a: OptimizationResult, b: OptimizationResult, objective: OptimizationObjective): boolean {
-  const eps = 1e-9;
-  if (objective === 'min-waste') {
-    if (a.totalWasteArea < b.totalWasteArea - eps) return true;
-    if (Math.abs(a.totalWasteArea - b.totalWasteArea) > eps) return false;
-    if (a.sheets.length !== b.sheets.length) return a.sheets.length < b.sheets.length;
-    return a.totalUtilization > b.totalUtilization;
-  }
+export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPart[], kerf = 0, objective: OptimizationObjective = 'min-sheets'): OptimizationResult {
+  if (sheet.width <= 0 || sheet.height <= 0) throw new Error('Sheet dimensions must be greater than zero.');
+  if (kerf < 0) throw new Error('Kerf cannot be negative.');
+  if (!input.length) return { material, objective, sheets: [], totalWasteArea: 0, totalUtilization: 0 };
 
-  if (a.sheets.length !== b.sheets.length) return a.sheets.length < b.sheets.length;
-  if (a.totalWasteArea < b.totalWasteArea - eps) return true;
-  if (Math.abs(a.totalWasteArea - b.totalWasteArea) > eps) return false;
-  return a.totalUtilization > b.totalUtilization;
+  // The external solver's ranking is already lexicographic on unplaced parts,
+  // sheet count, waste and cost. This is exactly the current KitchenKit goal:
+  // consume as few physical sheets as possible, then minimize waste.
+  const result = solveWithExternalEngine(material, sheet, input, kerf);
+  return { ...result, objective };
 }
