@@ -9,7 +9,6 @@ type Project = {
   name: string;
   status: string;
   created_at: string;
-  clients?: { name: string }[] | null;
 };
 
 const statusLabels: Record<string, string> = {
@@ -26,7 +25,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    (async () => {
+    async function loadProjects() {
       try {
         const supabase = getSupabaseBrowserClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -49,19 +48,20 @@ export default function Dashboard() {
 
         const { data, error: projectError } = await supabase
           .from('projects')
-          .select('id,name,status,created_at,clients(name)')
+          .select('id,name,status,created_at')
           .eq('organization_id', membership.organization_id)
           .order('created_at', { ascending: false })
           .limit(20);
         if (projectError) throw projectError;
-
         setProjects((data || []) as Project[]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'تعذر تحميل المشاريع.');
       } finally {
         setLoading(false);
       }
-    })();
+    }
+
+    loadProjects();
   }, []);
 
   const counts = {
@@ -122,7 +122,7 @@ export default function Dashboard() {
                   {projects.map((p) => (
                     <tr key={p.id}>
                       <td><strong>{p.name}</strong></td>
-                      <td>{p.clients?.[0]?.name || '—'}</td>
+                      <td>—</td>
                       <td><span className="badge">{statusLabels[p.status] || p.status}</span></td>
                       <td><Link className="btn" href={`/projects/${p.id}/boxes`}>فتح</Link></td>
                     </tr>
