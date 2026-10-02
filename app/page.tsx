@@ -10,11 +10,11 @@ export default function Dashboard() {
       <aside className="sidebar">
         <div className="brand">KitchenKit</div>
         <nav className="nav" aria-label="التنقل الرئيسي">
-          <a className="active" href="#">لوحة التحكم</a>
-          <a href="#projects">المشاريع</a>
-          <a href="#workshop">الورشة</a>
-          <a href="#clients">العملاء</a>
-          <a href="#settings">الإعدادات</a>
+          <a className="active" href="/">لوحة التحكم</a>
+          <a href="/projects/new">المشاريع</a>
+          <a href="/projects/new">مشروع جديد</a>
+          <a href="/workshop">الورشة</a>
+          <a href="/settings">الإعدادات</a>
         </nav>
       </aside>
 
@@ -32,8 +32,8 @@ export default function Dashboard() {
               <div className="subtitle">تابع المشاريع، الحسابات والتصنيع من مكان واحد.</div>
             </div>
             <div className="actions">
-              <button className="btn">الورشة</button>
-              <button className="btn primary">+ مشروع جديد</button>
+              <a className="btn" href="/workshop">الورشة</a>
+              <a className="btn primary" href="/projects/new">+ مشروع جديد</a>
             </div>
           </div>
 
@@ -46,7 +46,7 @@ export default function Dashboard() {
 
           <div className="grid">
             <section className="card" id="projects">
-              <div className="card-head"><span className="card-title">آخر المشاريع</span><button className="btn">عرض الكل</button></div>
+              <div className="card-head"><span className="card-title">آخر المشاريع</span><a className="btn" href="/projects/new">مشروع جديد</a></div>
               <div className="table-wrap">
                 <table>
                   <thead><tr><th>المشروع</th><th>العميل</th><th>الصناديق</th><th>الحالة</th></tr></thead>
@@ -58,7 +58,7 @@ export default function Dashboard() {
             <section className="card" id="workshop">
               <div className="card-head"><span className="card-title">الورشة</span><span className="badge warn">5 قيد التنفيذ</span></div>
               <div className="empty">المشاريع التي تم إرسالها للتصنيع ستظهر هنا، مع إمكانية فتح الملخص وطباعة وثائق الورشة.</div>
-              <button className="btn primary">فتح الورشة</button>
+              <a className="btn primary" href="/workshop">فتح الورشة</a>
             </section>
           </div>
         </section>
