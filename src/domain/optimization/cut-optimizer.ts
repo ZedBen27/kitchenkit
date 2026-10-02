@@ -35,10 +35,9 @@ export function partsFromCalculations(parts: CalculatedPartLike[], material: Mat
     }));
 }
 
-// Multi-start guillotine heuristic. It tries several deterministic sort orders and
-// keeps the layout with the lowest waste, then the fewest sheets, then highest use.
-// This is intentionally an adapter: an exact/OR solver can replace it later without
-// changing the domain API.
+// Multi-start guillotine heuristic. It first minimizes the number of sheets,
+// then minimizes total waste, then maximizes utilization. This keeps the
+// domain API replaceable by an exact/OR solver later without changing callers.
 export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPart[], kerf = 0): OptimizationResult {
   if (sheet.width <= 0 || sheet.height <= 0) throw new Error('Sheet dimensions must be greater than zero.');
   if (kerf < 0) throw new Error('Kerf cannot be negative.');
@@ -118,8 +117,11 @@ function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], k
 
 function isBetter(a: OptimizationResult, b: OptimizationResult): boolean {
   const eps = 1e-9;
+  // Primary objective: use the fewest physical sheets possible.
+  if (a.sheets.length !== b.sheets.length) return a.sheets.length < b.sheets.length;
+  // Secondary objective: among layouts using the same number of sheets, minimize waste.
   if (a.totalWasteArea < b.totalWasteArea - eps) return true;
   if (Math.abs(a.totalWasteArea - b.totalWasteArea) > eps) return false;
-  if (a.sheets.length !== b.sheets.length) return a.sheets.length < b.sheets.length;
+  // Tertiary objective: maximize utilization.
   return a.totalUtilization > b.totalUtilization;
 }
