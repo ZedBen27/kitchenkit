@@ -55,7 +55,7 @@ export function optimizeCuts(material: Material, sheet: SheetSize, input: CutPar
   ];
 
   const candidates = sorters.map((sorter) => runGuillotine(material, sheet, [...expanded].sort(sorter), kerf, objective));
-  return candidates.reduce((best, current) => isBetter(current, best, objective));
+  return candidates.reduce((best, current) => isBetter(current, best, objective) ? current : best);
 }
 
 function runGuillotine(material: Material, sheet: SheetSize, parts: CutPart[], kerf: number, objective: OptimizationObjective): OptimizationResult {
