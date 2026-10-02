@@ -13,23 +13,20 @@ type DbBox = { id: string; number: number };
 export default function CutOptimizerPage() {
   const params = useParams<{ jobId: string }>();
   const [parts, setParts] = useState<DbPart[]>([]);
+  const [boxNumbers, setBoxNumbers] = useState<Map<string, number>>(new Map());
   const [projectId, setProjectId] = useState('');
   const [projectName, setProjectName] = useState('');
   const [resinW, setResinW] = useState('2.44'); const [resinH, setResinH] = useState('1.22');
   const [alucoW, setAlucoW] = useState('2.44'); const [alucoH, setAlucoH] = useState('1.22'); const [kerf, setKerf] = useState('0.003');
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(''); const [error, setError] = useState('');
 
-  useEffect(() => { (async () => { try { const supabase = getSupabaseBrowserClient(); const { data: job, error: je } = await supabase.from('workshop_jobs').select('project_id').eq('id', params.jobId).single(); if (je) throw je; setProjectId(job.project_id); const [{ data: project, error: pe }, { data: boxes, error: be }] = await Promise.all([supabase.from('projects').select('name').eq('id', job.project_id).single(), supabase.from('project_boxes').select('id,number').eq('project_id', job.project_id).order('number')]); if (pe) throw pe; if (be) throw be; setProjectName(project.name); const boxRows = (boxes || []) as DbBox[]; const boxIds = boxRows.map(b => b.id); if (!boxIds.length) return; const { data: rows, error: partError } = await supabase.from('box_parts').select('id,box_id,material,part_type,length,width,quantity').in('box_id', boxIds); if (partError) throw partError; setParts((rows || []) as DbPart[]); } catch (err) { setError(err instanceof Error ? err.message : 'تعذر تحميل قطع المشروع.'); } finally { setLoading(false); } })(); }, [params.jobId]);
+  useEffect(() => { (async () => { try { const supabase = getSupabaseBrowserClient(); const { data: job, error: je } = await supabase.from('workshop_jobs').select('project_id').eq('id', params.jobId).single(); if (je) throw je; setProjectId(job.project_id); const [{ data: project, error: pe }, { data: boxes, error: be }] = await Promise.all([supabase.from('projects').select('name').eq('id', job.project_id).single(), supabase.from('project_boxes').select('id,number').eq('project_id', job.project_id).order('number')]); if (pe) throw pe; if (be) throw be; setProjectName(project.name); const boxRows = (boxes || []) as DbBox[]; setBoxNumbers(new Map(boxRows.map(b => [b.id, b.number]))); const boxIds = boxRows.map(b => b.id); if (!boxIds.length) return; const { data: rows, error: partError } = await supabase.from('box_parts').select('id,box_id,material,part_type,length,width,quantity').in('box_id', boxIds); if (partError) throw partError; setParts((rows || []) as DbPart[]); } catch (err) { setError(err instanceof Error ? err.message : 'تعذر تحميل قطع المشروع.'); } finally { setLoading(false); } })(); }, [params.jobId]);
 
-  const boxNumbers = useMemo(() => new Map(parts.map(p => [p.box_id, 0])), [parts]);
-  useEffect(() => { (async () => { if (!projectId) return; const supabase = getSupabaseBrowserClient(); const { data } = await supabase.from('project_boxes').select('id,number').eq('project_id', projectId); for (const box of (data || []) as DbBox[]) boxNumbers.set(box.id, box.number); })(); }, [projectId, boxNumbers]);
-
-  // Adapt the database shape to the domain optimizer and keep the box number in the label.
   const calculated = useMemo(() => parts
     .filter(p => p.width != null && Number(p.width) > 0 && Number(p.length) > 0)
     .map(p => ({
       material: p.material,
-      partType: `صندوق #${boxNumbers.get(p.box_id) || '?'} — ${p.part_type}`,
+      partType: `صندوق #${boxNumbers.get(p.box_id) ?? '?'} — ${p.part_type}`,
       length: Number(p.length),
       width: Number(p.width),
       quantity: Number(p.quantity),
