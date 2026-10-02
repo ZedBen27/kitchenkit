@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { solve2d } from '@0xdoublesharp/bin-packing-wasm/two-d';
+import { solve2d } from '@0xdoublesharp/bin-packing';
 import type { Material, OptimizationObjective, OptimizationResult, CutPart, SheetSize } from '@/domain/optimization/cut-optimizer';
 
 export const runtime = 'nodejs';
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
       sheets,
       totalWasteArea: solution.total_waste_area / (MM_PER_M * MM_PER_M),
       totalUtilization: totalSheetArea > 0 ? usedArea / totalSheetArea : 0,
-    };
+      };
 
     return NextResponse.json(result);
   } catch (error) {
