@@ -51,8 +51,30 @@ export default function CutOptimizerPage() {
   }, [loading, resinParts, alucoParts, resinW, resinH, alucoW, alucoH, kerf]);
 
   async function savePlans() {
-    if (!projectId || (!resin && !aluco)) return; setSaving(true); setError(''); setMessage('');
-    try { const supabase = getSupabaseBrowserClient(); await supabase.from('cut_plans').delete().eq('project_id', projectId); const rows = [...(resin ? toCutPlanInserts(projectId, resin, Number(kerf)) : []), ...(aluco ? toCutPlanInserts(projectId, aluco, Number(kerf)) : [])]; if (rows.length) { const { error: insertError } = await supabase.from('cut_plans').insert(rows); if (insertError) throw insertError; } setMessage(`تم حفظ ${rows.length} مخطط/لوح للمشروع.`); } catch (err) { setError(err instanceof Error ? err.message : 'تعذر حفظ مخططات القص.'); } finally { setSaving(false); }
+    if (!projectId || (!resin && !aluco)) return;
+    setSaving(true); setError(''); setMessage('');
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error: deleteError } = await supabase.from('cut_plans').delete().eq('project_id', projectId);
+      if (deleteError) throw deleteError;
+
+      const rows = [
+        ...(resin ? toCutPlanInserts(projectId, resin, Number(kerf)) : []),
+        ...(aluco ? toCutPlanInserts(projectId, aluco, Number(kerf)) : []),
+      ];
+      if (rows.length) {
+        const { error: insertError } = await supabase.from('cut_plans').insert(rows);
+        if (insertError) throw insertError;
+      }
+      setMessage(`تم حفظ ${rows.length} مخطط/لوح للمشروع.`);
+    } catch (err) {
+      if (err && typeof err === 'object' && 'message' in err) {
+        const dbError = err as { message?: string; details?: string; hint?: string; code?: string };
+        setError([dbError.message, dbError.details, dbError.hint, dbError.code ? `(${dbError.code})` : ''].filter(Boolean).join(' — '));
+      } else {
+        setError('تعذر حفظ مخططات القص.');
+      }
+    } finally { setSaving(false); }
   }
 
   return <main dir="rtl" className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"><div className="mx-auto max-w-7xl px-6 py-8"><header className="mb-8"><p className="mb-2 text-sm text-[hsl(var(--muted-foreground))]">الورشة / التحسين</p><h1 className="text-3xl font-bold">Cut Optimizer</h1><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{projectName || 'المشروع'} — جميع قطع Résine وAluco القابلة للقص من كل الصناديق.</p><div className="mt-4 inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium">↻ تدوير القطع مفعل تلقائيًا · الهدف: أقل عدد ممكن من الألواح</div></header>
