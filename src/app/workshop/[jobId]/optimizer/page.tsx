@@ -51,10 +51,15 @@ export default function CutOptimizerPage() {
   }, [loading, resinParts, alucoParts, resinW, resinH, alucoW, alucoH, kerf]);
 
   async function savePlans() {
-    if (!projectId || (!resin && !aluco)) return;
-    setSaving(true); setError(''); setMessage('');
+    if (saving) return;
+    if (!projectId) { setError('لم يتم تحديد المشروع. أعد تحميل صفحة التحسين.'); return; }
+    if (!resin && !aluco) { setError('لا توجد مخططات جاهزة للحفظ بعد.'); return; }
+    setSaving(true); setError(''); setMessage('جارٍ حفظ مخططات التقطيع...');
     try {
       const supabase = getSupabaseBrowserClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('انتهت جلسة الدخول. سجّل الدخول ثم حاول حفظ المخططات مرة أخرى.');
+
       const { error: deleteError } = await supabase.from('cut_plans').delete().eq('project_id', projectId);
       if (deleteError) throw deleteError;
 
@@ -62,25 +67,25 @@ export default function CutOptimizerPage() {
         ...(resin ? toCutPlanInserts(projectId, resin, Number(kerf)) : []),
         ...(aluco ? toCutPlanInserts(projectId, aluco, Number(kerf)) : []),
       ];
-      if (rows.length) {
-        const { error: insertError } = await supabase.from('cut_plans').insert(rows);
-        if (insertError) throw insertError;
-      }
-      setMessage(`تم حفظ ${rows.length} مخطط/لوح للمشروع.`);
+      if (!rows.length) throw new Error('لم يتم إنشاء أي مخطط قابل للحفظ.');
+
+      const { error: insertError } = await supabase.from('cut_plans').insert(rows);
+      if (insertError) throw insertError;
+      setMessage(`تم الحفظ بنجاح ✓ — ${rows.length} مخطط/لوح محفوظ للمشروع.`);
     } catch (err) {
       if (err && typeof err === 'object' && 'message' in err) {
         const dbError = err as { message?: string; details?: string; hint?: string; code?: string };
         setError([dbError.message, dbError.details, dbError.hint, dbError.code ? `(${dbError.code})` : ''].filter(Boolean).join(' — '));
+        setMessage('');
       } else {
         setError('تعذر حفظ مخططات القص.');
+        setMessage('');
       }
     } finally { setSaving(false); }
   }
 
   return <main dir="rtl" className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"><div className="mx-auto max-w-7xl px-6 py-8"><header className="mb-8"><p className="mb-2 text-sm text-[hsl(var(--muted-foreground))]">الورشة / التحسين</p><h1 className="text-3xl font-bold">Cut Optimizer</h1><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{projectName || 'المشروع'} — جميع قطع Résine وAluco القابلة للقص من كل الصناديق.</p><div className="mt-4 inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium">↻ تدوير القطع مفعل تلقائيًا · الهدف: أقل عدد ممكن من الألواح</div></header>
-    {error && <div className="mb-5 rounded-lg border p-4 text-sm text-[hsl(var(--destructive))]">{error}</div>}{message && <div className="mb-5 rounded-lg border p-4 text-sm">{message}</div>}
-    <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm"><h2 className="mb-4 text-lg font-semibold">أبعاد الألواح</h2><div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5"><SheetField label="Résine — العرض" value={resinW} setValue={setResinW}/><SheetField label="Résine — الارتفاع" value={resinH} setValue={setResinH}/><SheetField label="Aluco — العرض" value={alucoW} setValue={setAlucoW}/><SheetField label="Aluco — الارتفاع" value={alucoH} setValue={setAlucoH}/><SheetField label="Kerf / سماكة القطع" value={kerf} setValue={setKerf}/></div><p className="mt-3 text-xs text-[hsl(var(--muted-foreground))]">الوحدة: m.</p></section>
-    {loading || optimizing ? <div className="rounded-lg border p-5">{loading ? 'جارٍ تحميل القطع...' : 'جارٍ تحسين مخططات القص مع تدوير القطع...'}</div> : <>{!calculated.length && <div className="mb-6 rounded-lg border p-5">لا توجد قطع ألواح قابلة للقص بعد. اعتمد الحساب أولًا.</div>}{resin && <OptimizerResult title="Résine" result={resin}/>} {aluco && <OptimizerResult title="Aluco" result={aluco}/>} {(resin || aluco) && <button disabled={saving} onClick={savePlans} className="rounded-lg bg-[hsl(var(--primary))] px-6 py-3 font-semibold text-[hsl(var(--primary-foreground))] disabled:opacity-50">{saving ? 'جارٍ الحفظ...' : 'حفظ مخططات التقطيع'}</button>}</>}
+    {error && <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}{loading || optimizing ? <div className="rounded-lg border p-5">{loading ? 'جارٍ تحميل القطع...' : 'جارٍ تحسين مخططات القص مع تدوير القطع...'}</div> : <>{!calculated.length && <div className="mb-6 rounded-lg border p-5">لا توجد قطع ألواح قابلة للقص بعد. اعتمد الحساب أولًا.</div>}{resin && <OptimizerResult title="Résine" result={resin}/>} {aluco && <OptimizerResult title="Aluco" result={aluco}/>} {(resin || aluco) && <div className="mt-2 rounded-xl border bg-[hsl(var(--card))] p-4"><div className="flex flex-wrap items-center justify-between gap-4"><button type="button" disabled={saving} onClick={savePlans} className="rounded-lg bg-[hsl(var(--primary))] px-6 py-3 font-semibold text-[hsl(var(--primary-foreground))] disabled:cursor-not-allowed disabled:opacity-50">{saving ? 'جارٍ الحفظ...' : 'حفظ مخططات التقطيع'}</button>{message && <p className="text-sm font-medium text-green-700">{message}</p>}</div></div>}</>}
   </div></main>;
 }
 
