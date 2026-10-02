@@ -1,25 +1,29 @@
 'use client';
 
-const profileRows = [
-  ['0.900', '1Départ', '2', '2 Départ Long', '2'],
-  ['0.800', '1Départ', '2', '2 Départ Court', '2'],
-  ['0.600', '2 Départ Long', '4', '', ''],
-];
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
-const resinRows = [
-  ['Arrière', '0.847', '0.747', '1'],
-  ['Bas', '0.847', '0.547', '1'],
-  ['Droite', '0.547', '0.747', '1'],
-  ['Gauche', '0.547', '0.747', '1'],
-];
+type Part = { material: string; part_type: string; length: number; width: number | null; quantity: number; category: string };
+type Accessory = { accessory_type: string; quantity: number };
 
 export default function WorkshopDocumentsPage() {
-  return <main dir="rtl" className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 text-sm text-[hsl(var(--muted-foreground))]">الورشة / الوثائق</p><h1 className="text-3xl font-bold">وثائق التصنيع</h1><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">جداول القطع والمخططات التي ترافق المشروع إلى الورشة.</p></div><button onClick={() => window.print()} className="rounded-lg bg-[hsl(var(--primary))] px-5 py-2.5 font-semibold text-[hsl(var(--primary-foreground))]">طباعة جميع الوثائق</button></header>
-      <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">1. جدول قطع Profile</h2><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">Metrage</th><th className="p-3 text-right">Profile</th><th className="p-3 text-right">Qté</th><th className="p-3 text-right">Profile</th><th className="p-3 text-right">Qté</th></tr></thead><tbody>{profileRows.map((r, i) => <tr key={i} className="border-t">{r.map((v, j) => <td key={j} className="p-3">{v || '—'}</td>)}</tr>)}</tbody></table></div></section>
-      <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">2. مخطط قطع Résine</h2><div className="grid gap-4 md:grid-cols-2">{resinRows.map((r, i) => <div key={i} className="rounded-lg border p-4"><div className="mb-3 font-semibold">{r[0]}</div><div className="text-sm text-[hsl(var(--muted-foreground))]">L = {r[1]} m · H = {r[2]} m · Qté = {r[3]}</div><div className="mt-4 h-24 border border-dashed" /></div>)}</div></section>
-      <section className="rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">3. مخطط قطع Aluco</h2><div className="rounded-lg border p-5"><div className="flex min-h-32 items-center justify-center border border-dashed text-sm text-[hsl(var(--muted-foreground))]">مساحة مخطط Aluco — سيتم ربطها بنتيجة الـCut Optimizer</div></div></section>
-    </div>
-  </main>;
+  const params = useParams<{ jobId: string }>();
+  const [parts, setParts] = useState<Part[]>([]);
+  const [accessories, setAccessories] = useState<Accessory[]>([]);
+  const [projectName, setProjectName] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => { (async () => { try { const supabase = getSupabaseBrowserClient(); const { data: job, error: je } = await supabase.from('workshop_jobs').select('project_id').eq('id', params.jobId).single(); if (je) throw je; const [{ data: p, error: pe }, { data: project, error: pre }] = await Promise.all([supabase.from('project_boxes').select('id').eq('project_id', job.project_id), supabase.from('projects').select('name').eq('id', job.project_id).single()]); if (pe) throw pe; if (pre) throw pre; setProjectName(project.name); const boxIds = (p || []).map(x => x.id); if (!boxIds.length) return; const [{ data: partRows, error: partError }, { data: accessoryRows, error: accessoryError }] = await Promise.all([supabase.from('box_parts').select('category,material,part_type,length,width,quantity').in('box_id', boxIds), supabase.from('box_accessories').select('accessory_type,quantity').in('box_id', boxIds)]); if (partError) throw partError; if (accessoryError) throw accessoryError; setParts((partRows || []) as Part[]); setAccessories((accessoryRows || []) as Accessory[]); } catch (err) { setError(err instanceof Error ? err.message : 'تعذر تحميل الوثائق.'); } })(); }, [params.jobId]);
+
+  const profileRows = useMemo(() => parts.filter(p => p.material === 'Profile' || p.category === 'profile'), [parts]);
+  const resinRows = useMemo(() => parts.filter(p => p.material === 'Résine'), [parts]);
+  const alucoRows = useMemo(() => parts.filter(p => p.material === 'Aluco'), [parts]);
+
+  return <main dir="rtl" className="min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]"><div className="mx-auto max-w-6xl px-6 py-8"><header className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 text-sm text-[hsl(var(--muted-foreground))]">الورشة / الوثائق</p><h1 className="text-3xl font-bold">وثائق التصنيع</h1><p className="mt-2 text-sm text-[hsl(var(--muted-foreground))]">{projectName || 'المشروع'} — البيانات الفعلية المحسوبة.</p></div><button onClick={() => window.print()} className="rounded-lg bg-[hsl(var(--primary))] px-5 py-2.5 font-semibold text-[hsl(var(--primary-foreground))]">طباعة جميع الوثائق</button></header>{error && <div className="mb-5 rounded-lg border p-4 text-sm text-[hsl(var(--destructive))]">{error}</div>}
+    <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">1. جدول القطع</h2><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">المادة</th><th className="p-3 text-right">القطعة</th><th className="p-3 text-right">L</th><th className="p-3 text-right">H/P</th><th className="p-3 text-right">Qté</th></tr></thead><tbody>{parts.map((p, i) => <tr key={`${p.material}-${p.part_type}-${i}`} className="border-t"><td className="p-3">{p.material}</td><td className="p-3 font-medium">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3">{p.width == null ? '—' : `${Number(p.width).toFixed(3)} m`}</td><td className="p-3">{p.quantity}</td></tr>)}{!parts.length && <tr><td colSpan={5} className="p-6">لا توجد قطع محسوبة بعد.</td></tr>}</tbody></table></div></section>
+    <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">2. Résine</h2><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">القطعة</th><th className="p-3 text-right">L</th><th className="p-3 text-right">H</th><th className="p-3 text-right">Qté</th></tr></thead><tbody>{resinRows.map((p, i) => <tr key={i} className="border-t"><td className="p-3">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3">{p.width == null ? '—' : `${Number(p.width).toFixed(3)} m`}</td><td className="p-3">{p.quantity}</td></tr>)}</tbody></table></div></section>
+    <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">3. Aluco / Ouvrant</h2><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">المادة</th><th className="p-3 text-right">القطعة</th><th className="p-3 text-right">L</th><th className="p-3 text-right">H</th><th className="p-3 text-right">Qté</th></tr></thead><tbody>{[...alucoRows, ...profileRows.filter(p => p.part_type === 'Ouvrant H' || p.part_type === 'Ouvrant L')].map((p, i) => <tr key={i} className="border-t"><td className="p-3">{p.material}</td><td className="p-3">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3">{p.width == null ? '—' : `${Number(p.width).toFixed(3)} m`}</td><td className="p-3">{p.quantity}</td></tr>)}</tbody></table></div></section>
+    <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">4. الإكسسوارات</h2><div className="flex flex-wrap gap-2">{accessories.map((a, i) => <span key={`${a.accessory_type}-${i}`} className="rounded-md border px-3 py-2 text-sm">{a.accessory_type}: <strong>{a.quantity}</strong></span>)}</div></section>
+  </div></main>;
 }
