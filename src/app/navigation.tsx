@@ -35,6 +35,7 @@ export default function Navigation() {
       </nav>
       <div className="sidebar-bottom">
         <span>مساحة العمل</span>
+        <Link href="/settings" className={pathname === '/settings' ? 'active' : ''}>الإعدادات</Link>
         <button onClick={signOut}>تسجيل الخروج</button>
       </div>
     </aside>
