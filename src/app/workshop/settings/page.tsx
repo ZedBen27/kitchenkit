@@ -116,7 +116,7 @@ export default function WorkshopSettingsPage() {
         kerf: Number(settings.kerf),
         ouvrant_length: settings.ouvrant_length.trim() ? Number(settings.ouvrant_length) : null,
         profile_1_depart_length: settings.profile_1_depart_length.trim() ? Number(settings.profile_1_depart_length) : null,
-        profile_2_depart_long_length: settings.profile_2_depart_long_length.trim() ? Number(settings.profile_2_depart_length) : null,
+        profile_2_depart_long_length: settings.profile_2_depart_long_length.trim() ? Number(settings.profile_2_depart_long_length) : null,
         profile_2_depart_short_length: settings.profile_2_depart_short_length.trim() ? Number(settings.profile_2_depart_short_length) : null,
         updated_at: new Date().toISOString(),
       };
