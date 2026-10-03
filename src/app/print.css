@@ -1,4 +1,4 @@
-@page { size: A4 portrait; margin: 12mm 10mm; }
+@page { size: A4 portrait; margin: 7mm 8mm; }
 
 @media print {
   html, body {
@@ -6,11 +6,23 @@
     padding: 0 !important;
     min-height: 0 !important;
     background: #fff !important;
+    font-size: 9px !important;
   }
 
-  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    line-height: 1.2 !important;
+  }
 
-  .sidebar { display: none !important; }
+  /* الموقع والتنقل لا يطبعان */
+  .sidebar,
+  nav,
+  header.print\:hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+
   .shell { display: block !important; min-height: 0 !important; }
   .main { width: 100% !important; min-width: 0 !important; }
 
@@ -26,29 +38,29 @@
     padding: 0 !important;
   }
 
+  /* عنوان "وثائق التصنيع" والنص التوضيحي الرئيسي لا يطبعان */
   main > div > header {
-    margin: 0 0 7mm !important;
-    padding: 0 !important;
-    break-after: avoid-page !important;
-    page-break-after: avoid !important;
+    display: none !important;
   }
 
-  .print\:hidden { display: none !important; }
   .print\:shadow-none { box-shadow: none !important; }
 
+  /* إزالة شكل بطاقات الموقع والإبقاء على المحتوى المطبوع فقط */
   main > div > section {
-    margin: 0 0 7mm !important;
+    margin: 0 0 4mm !important;
     padding: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     background: #fff !important;
     overflow: visible !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
   }
 
+  /* عناوين الأقسام والنصوص التوضيحية لا تطبع؛ الجداول/المخططات فقط */
   main > div > section > div:first-child {
-    break-after: avoid !important;
-    page-break-after: avoid !important;
+    display: none !important;
   }
 
   article.break-inside-avoid,
@@ -62,44 +74,62 @@
     overflow: visible !important;
   }
 
+  /* جداول أكثر كثافة لتقليل عدد الصفحات */
   table {
     width: 100% !important;
     min-width: 0 !important;
+    margin: 0 !important;
     page-break-inside: auto !important;
     border-collapse: collapse !important;
+    font-size: 8.5px !important;
+    line-height: 1.15 !important;
   }
 
   thead { display: table-header-group !important; }
   tfoot { display: table-footer-group !important; }
+
   tr {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
   th, td {
     white-space: normal !important;
-    padding: 2.5mm 2mm !important;
+    padding: 1.2mm 1.5mm !important;
+    line-height: 1.15 !important;
   }
 
+  /* تقليل الفراغات بين جداول الصناديق */
   main > div > section:nth-of-type(1) article,
   main > div > section:nth-of-type(3) article {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    margin-bottom: 4mm !important;
+    margin: 0 0 2.5mm !important;
+    padding: 0 !important;
   }
 
+  /* مخططات القص: كل مخطط يبقى متماسكاً */
   main > div > section:nth-of-type(6) {
     break-before: page !important;
     page-break-before: always !important;
+    margin-top: 0 !important;
   }
 
   main > div > section:nth-of-type(6) article {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    margin-bottom: 6mm !important;
+    margin: 0 0 4mm !important;
+    padding: 0 !important;
   }
 
   main > div > section:nth-of-type(6) .lg\:grid-cols-2 {
     grid-template-columns: 1fr !important;
+  }
+
+  /* تقليل الهوامش والفراغات داخل بطاقات المخططات */
+  main > div > section:nth-of-type(6) article > div {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
   }
 
   a { color: inherit !important; text-decoration: none !important; }
