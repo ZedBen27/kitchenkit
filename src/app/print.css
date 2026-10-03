@@ -1,0 +1,106 @@
+@page { size: A4 portrait; margin: 12mm 10mm; }
+
+@media print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .sidebar { display: none !important; }
+  .shell { display: block !important; min-height: 0 !important; }
+  .main { width: 100% !important; min-width: 0 !important; }
+
+  main {
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+
+  main > div {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  main > div > header {
+    margin: 0 0 7mm !important;
+    padding: 0 !important;
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+
+  .print\\:hidden { display: none !important; }
+  .print\\:shadow-none { box-shadow: none !important; }
+
+  main > div > section {
+    margin: 0 0 7mm !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  main > div > section > div:first-child {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  article.break-inside-avoid,
+  .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    overflow: visible !important;
+  }
+
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  table {
+    width: 100% !important;
+    min-width: 0 !important;
+    page-break-inside: auto !important;
+    border-collapse: collapse !important;
+  }
+
+  thead { display: table-header-group !important; }
+  tfoot { display: table-footer-group !important; }
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  th, td {
+    white-space: normal !important;
+    padding: 2.5mm 2mm !important;
+  }
+
+  main > div > section:nth-of-type(1) article,
+  main > div > section:nth-of-type(3) article {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 4mm !important;
+  }
+
+  main > div > section:nth-of-type(6) {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  main > div > section:nth-of-type(6) article {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 6mm !important;
+  }
+
+  main > div > section:nth-of-type(6) .lg\\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+
+  a { color: inherit !important; text-decoration: none !important; }
+}
