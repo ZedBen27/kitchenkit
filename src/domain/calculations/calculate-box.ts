@@ -96,7 +96,7 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
     const portL = (L - 0.05) + B;
     parts.push(part('Ouvrant', 'Ouvrant H', H, 2));
     parts.push(part('Ouvrant', 'Ouvrant L', portL, 2));
-    parts.push(part('Aluco', 'door', portL - C, 1, H - C));
+    parts.push(part('Aluco', 'باب', portL - C, 1, H - C));
     accessories.push({ accessoryType: 'Coin Équerre', quantity: 4, unit: 'piece' });
     accessories.push({ accessoryType: 'Charnière', quantity: 2, unit: 'piece' });
     if (handlesEnabled) accessories.push({ accessoryType: 'Poignée', quantity: 1, unit: 'piece' });
@@ -104,7 +104,7 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
     const portL = ((L - 0.05) + B2) / 2;
     parts.push(part('Ouvrant', 'Ouvrant H', H, 4));
     parts.push(part('Ouvrant', 'Ouvrant L', portL, 4));
-    parts.push(part('Aluco', 'door', portL - C, 2, H - C));
+    parts.push(part('Aluco', 'باب', portL - C, 2, H - C));
     accessories.push({ accessoryType: 'Coin Équerre', quantity: 8, unit: 'piece' });
     accessories.push({ accessoryType: 'Charnière', quantity: 4, unit: 'piece' });
     if (handlesEnabled) accessories.push({ accessoryType: 'Poignée', quantity: 2, unit: 'piece' });
