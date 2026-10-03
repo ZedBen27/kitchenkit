@@ -58,7 +58,6 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
   const parts: Part[] = [];
   const accessories: Accessory[] = [];
 
-  // Confirmed profile rules.
   if (structure === 'ET') {
     parts.push(part('Profile', '1Départ', L, 2), part('Profile', '2 Départ Long', L, 2));
     parts.push(part('Profile', '1Départ', H, 2), part('Profile', '2 Départ Court', H, 2));
@@ -73,7 +72,6 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
     parts.push(part('Profile', '2 Départ Court', P, 4));
   }
 
-  // Résine faces.
   const resinFaces = boxType === 'Potager'
     ? ['back', 'bottom', 'right', 'left']
     : ['back', 'top', 'bottom', 'right', 'left'];
@@ -83,7 +81,6 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
     if (face === 'right' || face === 'left') parts.push(part('Résine', face, P - A, 1, H - A));
   }
 
-  // Shelves: independent of ET/SET/Eco.
   for (let i = 0; i < shelvesCount; i++) {
     const shelfL = L - T;
     const shelfP = P - R;
@@ -91,15 +88,12 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
     accessories.push({ accessoryType: 'Coin 2 Départ', quantity: 4, unit: 'piece' });
   }
 
-  // Per-box accessories.
   if (boxType === 'Potager') accessories.push({ accessoryType: 'Pied', quantity: 4, unit: 'piece' });
   accessories.push({ accessoryType: 'Coin 3 Départ', quantity: 8, unit: 'piece' });
 
-  // Doors.
-  // B and B2 are positive offsets added to the cabinet length before
-  // calculating the Ouvrant width, then the usual Aluco calculation follows.
+  // B and B2 are positive offsets subtracted from the cabinet length.
   if (doorsCount === 1) {
-    const portL = L + B;
+    const portL = L - B;
     parts.push(part('Ouvrant', 'Ouvrant H', H, 2));
     parts.push(part('Ouvrant', 'Ouvrant L', portL, 2));
     parts.push(part('Aluco', 'door', portL - C, 1, H - C));
@@ -107,7 +101,7 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
     accessories.push({ accessoryType: 'Charnière', quantity: 2, unit: 'piece' });
     if (handlesEnabled) accessories.push({ accessoryType: 'Poignée', quantity: 1, unit: 'piece' });
   } else if (doorsCount === 2) {
-    const portL = (L + B2) / 2;
+    const portL = (L - B2) / 2;
     parts.push(part('Ouvrant', 'Ouvrant H', H, 4));
     parts.push(part('Ouvrant', 'Ouvrant L', portL, 4));
     parts.push(part('Aluco', 'door', portL - C, 2, H - C));
