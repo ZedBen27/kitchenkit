@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './ibm-plex.css';
+import './print.css';
 import Navigation from './navigation';
 
 export const metadata: Metadata = {
