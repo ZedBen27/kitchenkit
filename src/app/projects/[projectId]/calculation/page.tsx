@@ -18,6 +18,7 @@ const partTypeLabel = (partType: string) => ({
   left: 'جانبي',
   back: 'خلفي',
   shelf: 'رف',
+  door: 'باب',
 }[partType] ?? partType);
 
 export default function CalculationPage() {
