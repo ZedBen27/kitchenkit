@@ -186,7 +186,7 @@ export default function WorkshopPurchasesPage() {
 
     if (ouvrantLengthTotal > 0) {
       const quantity = barQuantity(ouvrantLengthTotal, workshopLengths.ouvrant_length);
-      if (quantity > 0) add('Ouvrant', 'Ouvrant', quantity, 'قضيب', 200);
+      if (quantity > 0) add('Ouvrant', 'Ouvrant', quantity, 'قضيب', 3);
     }
 
     const accessoryTotals = new Map<string, number>();
@@ -195,13 +195,13 @@ export default function WorkshopPurchasesPage() {
       if (!type) continue;
       accessoryTotals.set(type, (accessoryTotals.get(type) || 0) + Number(accessory.quantity || 0));
     }
-    accessoryOrder.forEach((type, index) => add(`Accessoire:${type}`, `Accessoire — ${type}`, accessoryTotals.get(type) || 0, 'قطعة', 100 + index));
+    accessoryOrder.forEach((type, index) => add(`Accessoire:${type}`, `Accessoire — ${type}`, accessoryTotals.get(type) || 0, 'قطعة', 10 + index));
     for (const [type, quantity] of accessoryTotals) {
-      if (!accessoryOrder.includes(type)) add(`Accessoire:${type}`, `Accessoire — ${type}`, quantity, 'قطعة', 150);
+      if (!accessoryOrder.includes(type)) add(`Accessoire:${type}`, `Accessoire — ${type}`, quantity, 'قطعة', 20);
     }
 
-    if (resinSheets > 0) add('Résine', 'Résine', resinSheets, 'لوح كامل', 300);
-    if (alucoSheets > 0) add('Aluco', 'Aluco', alucoSheets, 'لوح كامل', 301);
+    if (resinSheets > 0) add('Résine', 'Résine', resinSheets, 'لوح كامل', 4);
+    if (alucoSheets > 0) add('Aluco', 'Aluco', alucoSheets, 'لوح كامل', 5);
 
     return [...totals.entries()]
       .sort(([, a], [, b]) => a.order - b.order || a.material.localeCompare(b.material, 'fr'))
