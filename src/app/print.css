@@ -45,9 +45,9 @@
 
   .print\:shadow-none { box-shadow: none !important; }
 
-  /* إزالة شكل بطاقات الموقع والإبقاء على المحتوى المطبوع فقط */
+  /* أقسام الطباعة: بدون بطاقات الموقع، مع إبقاء عنوان كل نوع لتمييز الجداول */
   main > div > section {
-    margin: 0 0 4mm !important;
+    margin: 0 0 3mm !important;
     padding: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
@@ -58,8 +58,34 @@
     page-break-inside: auto !important;
   }
 
-  /* عناوين الأقسام والنصوص التوضيحية لا تطبع؛ الجداول/المخططات فقط */
+  /* عنوان مختصر فقط: Profiles / Résine / Ouvrant / Aluco / مخططات القص */
   main > div > section > div:first-child {
+    display: block !important;
+    margin: 0 0 2mm !important;
+    padding: 1.5mm 2mm !important;
+    border: 0 !important;
+    border-bottom: 0.35mm solid #999 !important;
+    background: #f3f4f6 !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  main > div > section > div:first-child h2 {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+  }
+
+  /* إخفاء الشروحات فقط، وليس عنوان القسم */
+  main > div > section > div:first-child p {
+    display: none !important;
+  }
+
+  /* قسم الإكسسوارات ليس من الجداول المطلوبة للطباعة */
+  main > div > section:nth-of-type(5) {
     display: none !important;
   }
 
@@ -101,7 +127,9 @@
 
   /* تقليل الفراغات بين جداول الصناديق */
   main > div > section:nth-of-type(1) article,
-  main > div > section:nth-of-type(3) article {
+  main > div > section:nth-of-type(2) article,
+  main > div > section:nth-of-type(3) article,
+  main > div > section:nth-of-type(4) article {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     margin: 0 0 2.5mm !important;
