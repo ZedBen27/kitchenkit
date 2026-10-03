@@ -91,9 +91,9 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
   if (boxType === 'Potager') accessories.push({ accessoryType: 'Pied', quantity: 4, unit: 'piece' });
   accessories.push({ accessoryType: 'Coin 3 Départ', quantity: 8, unit: 'piece' });
 
-  // New door rule: subtract 5 cm from cabinet length, then add B/B2.
+  // L, B and B2 are expressed in metres at calculation time. 5 cm = 0.05 m.
   if (doorsCount === 1) {
-    const portL = (L - 5) + B;
+    const portL = (L - 0.05) + B;
     parts.push(part('Ouvrant', 'Ouvrant H', H, 2));
     parts.push(part('Ouvrant', 'Ouvrant L', portL, 2));
     parts.push(part('Aluco', 'door', portL - C, 1, H - C));
@@ -101,7 +101,7 @@ export function calculateBox(box: BoxInput, settings: ProjectSettings): BoxCalcu
     accessories.push({ accessoryType: 'Charnière', quantity: 2, unit: 'piece' });
     if (handlesEnabled) accessories.push({ accessoryType: 'Poignée', quantity: 1, unit: 'piece' });
   } else if (doorsCount === 2) {
-    const portL = ((L - 5) + B2) / 2;
+    const portL = ((L - 0.05) + B2) / 2;
     parts.push(part('Ouvrant', 'Ouvrant H', H, 4));
     parts.push(part('Ouvrant', 'Ouvrant L', portL, 4));
     parts.push(part('Aluco', 'door', portL - C, 2, H - C));
