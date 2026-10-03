@@ -15,7 +15,6 @@
     line-height: 1.2 !important;
   }
 
-  /* الموقع والتنقل لا يطبعان */
   .sidebar,
   nav,
   header.print\:hidden,
@@ -38,14 +37,12 @@
     padding: 0 !important;
   }
 
-  /* عنوان "وثائق التصنيع" والنص التوضيحي الرئيسي لا يطبعان */
   main > div > header {
     display: none !important;
   }
 
   .print\:shadow-none { box-shadow: none !important; }
 
-  /* أقسام الطباعة: بدون بطاقات الموقع، مع إبقاء عنوان كل نوع لتمييز الجداول */
   main > div > section {
     margin: 0 0 3mm !important;
     padding: 0 !important;
@@ -58,7 +55,6 @@
     page-break-inside: auto !important;
   }
 
-  /* عنوان مختصر فقط: Profiles / Résine / Ouvrant / Aluco / مخططات القص */
   main > div > section > div:first-child {
     display: block !important;
     margin: 0 0 2mm !important;
@@ -79,12 +75,10 @@
     font-weight: 700 !important;
   }
 
-  /* إخفاء الشروحات فقط، وليس عنوان القسم */
   main > div > section > div:first-child p {
     display: none !important;
   }
 
-  /* قسم الإكسسوارات ليس من الجداول المطلوبة للطباعة */
   main > div > section:nth-of-type(5) {
     display: none !important;
   }
@@ -100,7 +94,6 @@
     overflow: visible !important;
   }
 
-  /* جداول أكثر كثافة لتقليل عدد الصفحات */
   table {
     width: 100% !important;
     min-width: 0 !important;
@@ -125,7 +118,6 @@
     line-height: 1.15 !important;
   }
 
-  /* تقليل الفراغات بين جداول الصناديق */
   main > div > section:nth-of-type(1) article,
   main > div > section:nth-of-type(2) article,
   main > div > section:nth-of-type(3) article,
@@ -136,11 +128,45 @@
     padding: 0 !important;
   }
 
-  /* مخططات القص: كل مخطط يبقى متماسكاً */
+  /* مخططات القص: يبدأ قسم مستقل، وتظهر هوية المادة بوضوح قبل كل مجموعة */
   main > div > section:nth-of-type(6) {
     break-before: page !important;
     page-break-before: always !important;
     margin-top: 0 !important;
+  }
+
+  main > div > section:nth-of-type(6) > div:nth-child(2),
+  main > div > section:nth-of-type(6) > div:nth-child(3) {
+    display: block !important;
+    margin: 0 0 4mm !important;
+    padding: 0 !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  main > div > section:nth-of-type(6) > div:nth-child(2) > div:first-child,
+  main > div > section:nth-of-type(6) > div:nth-child(3) > div:first-child {
+    display: block !important;
+    margin: 0 0 2mm !important;
+    padding: 1.5mm 2mm !important;
+    border: 0.35mm solid #777 !important;
+    background: #f3f4f6 !important;
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  main > div > section:nth-of-type(6) > div:nth-child(2) > div:first-child h3,
+  main > div > section:nth-of-type(6) > div:nth-child(3) > div:first-child h3 {
+    display: block !important;
+    margin: 0 !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    font-weight: 800 !important;
+  }
+
+  main > div > section:nth-of-type(6) > div:nth-child(2) > div:first-child span,
+  main > div > section:nth-of-type(6) > div:nth-child(3) > div:first-child span {
+    font-size: 8px !important;
   }
 
   main > div > section:nth-of-type(6) article {
@@ -154,7 +180,6 @@
     grid-template-columns: 1fr !important;
   }
 
-  /* تقليل الهوامش والفراغات داخل بطاقات المخططات */
   main > div > section:nth-of-type(6) article > div {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
