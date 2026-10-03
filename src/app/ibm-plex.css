@@ -1,4 +1,7 @@
-@import '@ibm/plex-sans-arabic/css/ibm-plex-sans-arabic.css';
+@import '@fontsource/ibm-plex-sans-arabic/400.css';
+@import '@fontsource/ibm-plex-sans-arabic/500.css';
+@import '@fontsource/ibm-plex-sans-arabic/600.css';
+@import '@fontsource/ibm-plex-sans-arabic/700.css';
 
 html[lang='ar'] body,
 html[lang='ar'] button,
