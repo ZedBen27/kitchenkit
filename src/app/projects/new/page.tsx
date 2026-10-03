@@ -28,6 +28,14 @@ export default function NewProjectPage() {
       if (membershipError) throw membershipError;
       if (!membership) throw new Error('لا توجد مؤسسة مرتبطة بهذا الحساب.');
 
+      const { data: workshopSettings, error: workshopSettingsError } = await supabase
+        .from('workshop_settings')
+        .select('a,b,b2,c,t,r,handles_enabled,resin_width,resin_height,aluco_width,aluco_height,kerf')
+        .eq('organization_id', membership.organization_id)
+        .maybeSingle();
+      if (workshopSettingsError) throw workshopSettingsError;
+      if (!workshopSettings) throw new Error('أكمل إعدادات الورشة أولًا من صفحة إعدادات الورشة.');
+
       const clientName = String(form.get('clientName') || '').trim();
       const { data: client, error: clientError } = await supabase
         .from('clients')
@@ -47,6 +55,23 @@ export default function NewProjectPage() {
         .select('id')
         .single();
       if (projectError) throw projectError;
+
+      const { error: projectSettingsError } = await supabase.from('project_settings').insert({
+        project_id: project.id,
+        a: workshopSettings.a,
+        b: workshopSettings.b,
+        b2: workshopSettings.b2,
+        c: workshopSettings.c,
+        t: workshopSettings.t,
+        r: workshopSettings.r,
+        handles_enabled: workshopSettings.handles_enabled,
+        resin_width: workshopSettings.resin_width,
+        resin_height: workshopSettings.resin_height,
+        aluco_width: workshopSettings.aluco_width,
+        aluco_height: workshopSettings.aluco_height,
+        kerf: workshopSettings.kerf,
+      });
+      if (projectSettingsError) throw projectSettingsError;
 
       router.push(`/projects/${project.id}/boxes`);
     } catch (err) {
