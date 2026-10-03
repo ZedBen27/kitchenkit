@@ -18,6 +18,7 @@ type CutPlan = {
   waste: number;
 };
 type ProfileRow = { part_type: string; length: number; quantity: number };
+type AlucoRow = { boxNumber: number; part_type: string; length: number; width: number | null; quantity: number };
 
 const profileOrder = ['1Départ', '1 Départ', '2Départ Long', '2 Départ Long', '2Départes Long', '2 Départs Long', '2Départ Court', '2 Départ Court', '2Départes Court', '2 Départs Court', 'Ouvrant H', 'Ouvrant L'];
 
@@ -39,6 +40,29 @@ function profileRowsForBox(rows: Part[]): ProfileRow[] {
     if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
     return a.part_type.localeCompare(b.part_type);
   });
+}
+
+function alucoRowsForBoxes(boxes: Box[], parts: Part[]): AlucoRow[] {
+  const grouped = new Map<string, AlucoRow>();
+  const boxNumbers = new Map(boxes.map(box => [box.id, box.number]));
+  for (const row of parts) {
+    if (row.material !== 'Aluco') continue;
+    const boxNumber = boxNumbers.get(row.box_id);
+    if (boxNumber == null) continue;
+    const lengthKey = Number(row.length).toFixed(6);
+    const widthKey = row.width == null ? 'null' : Number(row.width).toFixed(6);
+    const key = `${boxNumber}|${row.part_type}|${lengthKey}|${widthKey}`;
+    const current = grouped.get(key);
+    if (current) current.quantity += Number(row.quantity) || 0;
+    else grouped.set(key, {
+      boxNumber,
+      part_type: row.part_type,
+      length: Number(row.length),
+      width: row.width == null ? null : Number(row.width),
+      quantity: Number(row.quantity) || 0,
+    });
+  }
+  return [...grouped.values()].sort((a, b) => a.boxNumber - b.boxNumber || a.part_type.localeCompare(b.part_type) || a.length - b.length || (a.width ?? -1) - (b.width ?? -1));
 }
 
 export default function WorkshopDocumentsPage() {
@@ -84,7 +108,7 @@ export default function WorkshopDocumentsPage() {
   const profileGroups = useMemo(() => boxes.map(box => ({ box, rows: profileRowsForBox(parts.filter(p => p.box_id === box.id && (p.material === 'Profile' || p.category === 'profile'))) })).filter(group => group.rows.length > 0), [boxes, parts]);
   const profileRows = useMemo(() => parts.filter(p => p.material === 'Profile' || p.category === 'profile'), [parts]);
   const resinGroups = useMemo(() => boxes.map(box => ({ box, rows: parts.filter(p => p.box_id === box.id && (p.material === 'Résine' || p.material === 'Resine')) })).filter(group => group.rows.length > 0), [boxes, parts]);
-  const alucoGroups = useMemo(() => boxes.map(box => ({ box, rows: parts.filter(p => p.box_id === box.id && p.material === 'Aluco') })).filter(group => group.rows.length > 0), [boxes, parts]);
+  const alucoRows = useMemo(() => alucoRowsForBoxes(boxes, parts), [boxes, parts]);
   const ouvrantRows = useMemo(() => profileRows.filter(p => p.part_type === 'Ouvrant H' || p.part_type === 'Ouvrant L'), [profileRows]);
   const accessoriesOnly = useMemo(() => accessories, [accessories]);
   const resinPlans = useMemo(() => cutPlans.filter(p => p.material === 'Resine' || p.material === 'Résine'), [cutPlans]);
@@ -98,7 +122,7 @@ export default function WorkshopDocumentsPage() {
 
     <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><div className="mb-5 flex items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">2. Résine</h2><p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">جدول مستقل لكل صندوق، مع رقم الصندوق واسم القطعة وأبعادها والكمية.</p></div><span className="rounded-full bg-[hsl(var(--muted))] px-3 py-1 text-xs font-semibold">{resinGroups.length} صناديق</span></div><div className="space-y-5">{resinGroups.map(({ box, rows }) => <article key={box.id} className="break-inside-avoid overflow-hidden rounded-lg border print:break-inside-avoid"><div className="flex items-center justify-between border-b bg-[hsl(var(--muted))] px-4 py-3"><h3 className="font-semibold">الصندوق #{box.number}</h3><span className="text-xs text-[hsl(var(--muted-foreground))]">{rows.length} أنواع قطع</span></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">رقم الصندوق</th><th className="p-3 text-right">اسم القطعة</th><th className="p-3 text-right">L</th><th className="p-3 text-right">H</th><th className="p-3 text-right">الكمية</th></tr></thead><tbody>{rows.map((p, i) => <tr key={`${p.part_type}-${p.length}-${p.width}-${i}`} className="border-t"><td className="p-3 font-semibold">#{box.number}</td><td className="p-3 font-medium">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3">{p.width == null ? '—' : `${Number(p.width).toFixed(3)} m`}</td><td className="p-3 font-semibold">{p.quantity}</td></tr>)}</tbody></table></div></article>)}{!resinGroups.length && <div className="rounded-lg border border-dashed p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">لا توجد قطع Résine محسوبة بعد.</div>}</div></section>
 
-    <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><div className="mb-5 flex items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">3. Aluco</h2><p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">جدول مستقل لكل صندوق، بنفس تنسيق Résine: رقم الصندوق، اسم القطعة، L، H والكمية.</p></div><span className="rounded-full bg-[hsl(var(--muted))] px-3 py-1 text-xs font-semibold">{alucoGroups.length} صناديق</span></div><div className="space-y-5">{alucoGroups.map(({ box, rows }) => <article key={box.id} className="break-inside-avoid overflow-hidden rounded-lg border print:break-inside-avoid"><div className="flex items-center justify-between border-b bg-[hsl(var(--muted))] px-4 py-3"><h3 className="font-semibold">الصندوق #{box.number}</h3><span className="text-xs text-[hsl(var(--muted-foreground))]">{rows.length} أنواع قطع</span></div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">رقم الصندوق</th><th className="p-3 text-right">اسم القطعة</th><th className="p-3 text-right">L</th><th className="p-3 text-right">H</th><th className="p-3 text-right">الكمية</th></tr></thead><tbody>{rows.map((p, i) => <tr key={`${p.part_type}-${p.length}-${p.width}-${i}`} className="border-t"><td className="p-3 font-semibold">#{box.number}</td><td className="p-3 font-medium">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3">{p.width == null ? '—' : `${Number(p.width).toFixed(3)} m`}</td><td className="p-3 font-semibold">{p.quantity}</td></tr>)}</tbody></table></div></article>)}{!alucoGroups.length && <div className="rounded-lg border border-dashed p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">لا توجد قطع Aluco محسوبة بعد.</div>}</div></section>
+    <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><div className="mb-5 flex items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">3. Aluco</h2><p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">جدول موحد لجميع الصناديق، مع تجميع القطع ذات نفس الاسم والأبعاد داخل الصندوق نفسه.</p></div><span className="rounded-full bg-[hsl(var(--muted))] px-3 py-1 text-xs font-semibold">{new Set(alucoRows.map(row => row.boxNumber)).size} صناديق</span></div><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">رقم الصندوق</th><th className="p-3 text-right">اسم القطعة</th><th className="p-3 text-right">الطول</th><th className="p-3 text-right">العرض</th><th className="p-3 text-right">الكمية</th></tr></thead><tbody>{alucoRows.map((p, i) => <tr key={`${p.boxNumber}-${p.part_type}-${p.length}-${p.width}-${i}`} className="border-t"><td className="p-3 font-semibold">#{p.boxNumber}</td><td className="p-3 font-medium">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3">{p.width == null ? '—' : `${Number(p.width).toFixed(3)} m`}</td><td className="p-3 font-semibold">{p.quantity}</td></tr>)}</tbody></table></div>{!alucoRows.length && <div className="mt-3 rounded-lg border border-dashed p-8 text-center text-sm text-[hsl(var(--muted-foreground))]">لا توجد قطع Aluco محسوبة بعد.</div>}</section>
 
     <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">4. Ouvrant</h2><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">القطعة</th><th className="p-3 text-right">L</th><th className="p-3 text-right">Qté</th></tr></thead><tbody>{ouvrantRows.map((p, i) => <tr key={`${p.part_type}-${p.length}-${i}`} className="border-t"><td className="p-3 font-medium">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3 font-semibold">{p.quantity}</td></tr>)}</tbody></table></div>{!ouvrantRows.length && <div className="mt-3 rounded-lg border border-dashed p-6 text-center text-sm text-[hsl(var(--muted-foreground))]">لا توجد قطع Ouvrant محسوبة بعد.</div>}</section>
 
