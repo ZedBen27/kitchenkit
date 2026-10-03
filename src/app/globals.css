@@ -203,6 +203,55 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus { border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px hsl(var(--ring) / .11); outline: none; }
 
+/* Project list: compact client metadata + stable status dropdown. */
+.project-cell { min-width: 220px; }
+.project-cell > strong { display: block; line-height: 1.35; }
+.project-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; color: hsl(var(--muted-foreground)); font-size: 11px; line-height: 1.4; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-actions { display: flex; align-items: center; justify-content: flex-start; gap: 8px; position: relative; }
+.status-menu-wrap { position: relative; display: inline-flex; flex: 0 0 auto; }
+.status-menu {
+  position: absolute;
+  z-index: 100;
+  inset-inline-end: 0;
+  top: calc(100% + 7px);
+  width: max-content;
+  min-width: 190px;
+  max-width: min(260px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: 0 16px 36px hsl(var(--foreground) / .16), 0 3px 10px hsl(var(--foreground) / .08);
+  text-align: right;
+  white-space: nowrap;
+}
+.status-menu-item {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.status-menu-item:hover:not(:disabled) { background: hsl(var(--muted) / .6); }
+.status-menu-item:disabled { cursor: default; opacity: .55; }
+.status-dot { width: 9px; height: 9px; border-radius: 999px; flex: 0 0 9px; }
+.status-dot.draft { background: #f59e0b; }
+.status-dot.in_progress { background: #3b82f6; }
+.status-dot.completed { background: #10b981; }
+.status-dot.cancelled { background: #ef4444; }
+.status-dot.saved { background: #94a3b8; }
+.status-current { margin-inline-start: auto; color: hsl(var(--muted-foreground)); font-size: 10px; font-weight: 700; }
+
 /* --------------------------------------------------------------------------
    Auth
    -------------------------------------------------------------------------- */
@@ -267,11 +316,12 @@ input:focus, select:focus, textarea:focus { border-color: hsl(var(--ring)); box-
   .stat-value { font-size: 23px; }
   .topbar { min-height: 60px; }
   .auth-card { padding: 20px; border-radius: 17px; }
+  .status-menu { min-width: 180px; }
 }
 
 /* Print remains deliberately restrained: no layout logic is changed. */
 @media print {
   body { background: #fff !important; }
-  .topbar, .sidebar, .print\:hidden { display: none !important; }
+  .topbar, .sidebar, .print\\:hidden { display: none !important; }
   .card { box-shadow: none !important; }
 }
