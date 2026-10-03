@@ -21,7 +21,8 @@
 }
 
 .dark .text-slate-950,
-.dark .text-slate-900 {
+.dark .text-slate-900,
+.dark .text-slate-800 {
   color: hsl(var(--foreground)) !important;
 }
 
@@ -40,14 +41,19 @@
 }
 
 .dark .border-slate-200,
-.dark .border-slate-300 {
+.dark .border-slate-300,
+.dark .border-slate-100 {
   border-color: hsl(var(--border)) !important;
 }
 
 .dark .border-r-slate-200,
 .dark .border-l-slate-200,
 .dark .border-t-slate-200,
-.dark .border-b-slate-200 {
+.dark .border-b-slate-200,
+.dark .border-r-slate-100,
+.dark .border-l-slate-100,
+.dark .border-t-slate-100,
+.dark .border-b-slate-100 {
   border-color: hsl(var(--border)) !important;
 }
 
@@ -88,4 +94,15 @@
 .dark [class*="bg-slate-50"] .bg-white,
 .dark [class*="bg-slate-50"] .bg-white\/95 {
   background-color: hsl(var(--card)) !important;
+}
+
+/* Table hover states need a dark surface rather than a pale slate background. */
+.dark .hover\:bg-slate-50\/70:hover,
+.dark .hover\:bg-slate-50:hover {
+  background-color: hsl(var(--muted) / .35) !important;
+}
+
+/* Quantity pills remain visible without becoming bright white blocks. */
+.dark .bg-slate-100 {
+  background-color: hsl(var(--muted)) !important;
 }
