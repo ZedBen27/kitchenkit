@@ -53,6 +53,19 @@ function profileRowsForBox(rows: Part[]): ProfileRow[] {
   });
 }
 
+function resinRowsForBox(rows: Part[]): Part[] {
+  const grouped = new Map<string, Part>();
+  for (const row of rows) {
+    const lengthKey = Number(row.length).toFixed(6);
+    const widthKey = row.width == null ? 'null' : Number(row.width).toFixed(6);
+    const key = `${partTypeLabel(row.part_type)}|${lengthKey}|${widthKey}`;
+    const current = grouped.get(key);
+    if (current) current.quantity += Number(row.quantity) || 0;
+    else grouped.set(key, { ...row, quantity: Number(row.quantity) || 0 });
+  }
+  return [...grouped.values()].sort((a, b) => a.part_type.localeCompare(b.part_type) || a.length - b.length || (a.width ?? -1) - (b.width ?? -1));
+}
+
 function alucoRowsForBoxes(boxes: Box[], parts: Part[]): AlucoRow[] {
   const grouped = new Map<string, AlucoRow>();
   const boxNumbers = new Map(boxes.map(box => [box.id, box.number]));
@@ -137,7 +150,7 @@ export default function WorkshopDocumentsPage() {
   })(); }, [params.jobId]);
 
   const profileGroups = useMemo(() => boxes.map(box => ({ box, rows: profileRowsForBox(parts.filter(p => p.box_id === box.id && (p.material === 'Profile' || p.category === 'profile'))) })).filter(group => group.rows.length > 0), [boxes, parts]);
-  const resinGroups = useMemo(() => boxes.map(box => ({ box, rows: parts.filter(p => p.box_id === box.id && (p.material === 'Résine' || p.material === 'Resine')) })).filter(group => group.rows.length > 0), [boxes, parts]);
+  const resinGroups = useMemo(() => boxes.map(box => ({ box, rows: resinRowsForBox(parts.filter(p => p.box_id === box.id && (p.material === 'Résine' || p.material === 'Resine'))) })).filter(group => group.rows.length > 0), [boxes, parts]);
   const alucoRows = useMemo(() => alucoRowsForBoxes(boxes, parts), [boxes, parts]);
   const ouvrantRows = useMemo(() => ouvrantRowsForBoxes(boxes, parts), [boxes, parts]);
   const accessoriesOnly = useMemo(() => accessories, [accessories]);
