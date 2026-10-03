@@ -364,8 +364,11 @@ function SheetCard({ sheet }: { sheet: OptimizationResult['sheets'][number] }) {
                   </div>
 
                   <div className="pointer-events-none absolute bottom-1 left-1 top-1 flex items-center justify-center" style={{ width: `${Math.max(14, dimensionFontSize + 5)}px` }}>
-                    <div className="flex items-center justify-center whitespace-nowrap font-semibold text-slate-500" style={{ fontSize: `${dimensionFontSize}px`, lineHeight: '1', transform: 'rotate(-90deg)' }}>
-                      <span>{verticalDimension}</span>
+                    <div className="relative flex h-full w-full items-center justify-center">
+                      <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-slate-300" />
+                      <span className="relative z-10 bg-white px-0.5 font-semibold text-slate-500" style={{ fontSize: `${dimensionFontSize}px`, lineHeight: '1', transform: 'rotate(-90deg)', whiteSpace: 'nowrap' }}>
+                        {verticalDimension}
+                      </span>
                     </div>
                   </div>
 
