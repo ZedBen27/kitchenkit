@@ -12,7 +12,6 @@ type WorkshopSettings = {
   c: string;
   t: string;
   r: string;
-  handles_enabled: boolean;
   resin_width: string;
   resin_height: string;
   aluco_width: string;
@@ -21,7 +20,7 @@ type WorkshopSettings = {
 };
 
 const defaults: WorkshopSettings = {
-  a: '5.3', b: '1.7', b2: '3.4', c: '4', t: '', r: '', handles_enabled: false,
+  a: '5.3', b: '1.7', b2: '3.4', c: '4', t: '', r: '',
   resin_width: '2.44', resin_height: '1.22', aluco_width: '2.44', aluco_height: '1.22', kerf: '0.003',
 };
 
@@ -54,7 +53,7 @@ export default function WorkshopSettingsPage() {
 
         const { data, error: settingsError } = await supabase
           .from('workshop_settings')
-          .select('a,b,b2,c,t,r,handles_enabled,resin_width,resin_height,aluco_width,aluco_height,kerf')
+          .select('a,b,b2,c,t,r,resin_width,resin_height,aluco_width,aluco_height,kerf')
           .eq('organization_id', membership.organization_id)
           .maybeSingle();
         if (settingsError) throw settingsError;
@@ -66,7 +65,6 @@ export default function WorkshopSettingsPage() {
             c: String(Number(data.c) * 1000),
             t: data.t == null ? '' : String(Number(data.t) * 100),
             r: data.r == null ? '' : String(Number(data.r) * 100),
-            handles_enabled: Boolean(data.handles_enabled),
             resin_width: String(data.resin_width),
             resin_height: String(data.resin_height),
             aluco_width: String(data.aluco_width),
@@ -101,7 +99,6 @@ export default function WorkshopSettingsPage() {
         c: mmToM(settings.c),
         t: settings.t.trim() ? cmToM(settings.t) : null,
         r: settings.r.trim() ? cmToM(settings.r) : null,
-        handles_enabled: settings.handles_enabled,
         resin_width: Number(settings.resin_width),
         resin_height: Number(settings.resin_height),
         aluco_width: Number(settings.aluco_width),
@@ -152,10 +149,6 @@ export default function WorkshopSettingsPage() {
                 <NumberField label="T — الرفوف (L)" value={settings.t} unit="cm" onChange={(v) => update('t', v)} />
                 <NumberField label="R — الرفوف (P)" value={settings.r} unit="cm" onChange={(v) => update('r', v)} />
               </div>
-              <label className="mt-6 flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                <input type="checkbox" checked={settings.handles_enabled} onChange={(e) => update('handles_enabled', e.target.checked)} className="h-4 w-4 accent-slate-900" />
-                <span><span className="block text-sm font-black">الأبواب تتطلب مقابض</span><span className="mt-0.5 block text-xs text-slate-500">سيُضاف مقبض لكل باب عند الحساب.</span></span>
-              </label>
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
