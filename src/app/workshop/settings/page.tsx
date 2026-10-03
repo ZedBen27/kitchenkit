@@ -31,6 +31,7 @@ const defaults: WorkshopSettings = {
 
 const cmToM = (value: string) => Number(value) / 100;
 const mmToM = (value: string) => Number(value) / 1000;
+const displayNumber = (value: number) => String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
 
 export default function WorkshopSettingsPage() {
   const [settings, setSettings] = useState<WorkshopSettings>(defaults);
@@ -64,21 +65,21 @@ export default function WorkshopSettingsPage() {
         if (settingsError) throw settingsError;
         if (data) {
           setSettings({
-            a: String(Number(data.a) * 100),
-            b: String(Number(data.b) * 100),
-            b2: String(Number(data.b2) * 100),
-            c: String(Number(data.c) * 1000),
-            t: data.t == null ? '' : String(Number(data.t) * 100),
-            r: data.r == null ? '' : String(Number(data.r) * 100),
-            resin_width: String(data.resin_width),
-            resin_height: String(data.resin_height),
-            aluco_width: String(data.aluco_width),
-            aluco_height: String(data.aluco_height),
-            kerf: String(data.kerf),
-            ouvrant_length: data.ouvrant_length == null ? '6' : String(data.ouvrant_length),
-            profile_1_depart_length: data.profile_1_depart_length == null ? '6' : String(data.profile_1_depart_length),
-            profile_2_depart_long_length: data.profile_2_depart_long_length == null ? '6' : String(data.profile_2_depart_long_length),
-            profile_2_depart_short_length: data.profile_2_depart_short_length == null ? '6' : String(data.profile_2_depart_short_length),
+            a: displayNumber(Number(data.a) * 100),
+            b: displayNumber(Number(data.b) * 100),
+            b2: displayNumber(Number(data.b2) * 100),
+            c: displayNumber(Number(data.c) * 1000),
+            t: data.t == null ? '' : displayNumber(Number(data.t) * 100),
+            r: data.r == null ? '' : displayNumber(Number(data.r) * 100),
+            resin_width: displayNumber(Number(data.resin_width)),
+            resin_height: displayNumber(Number(data.resin_height)),
+            aluco_width: displayNumber(Number(data.aluco_width)),
+            aluco_height: displayNumber(Number(data.aluco_height)),
+            kerf: displayNumber(Number(data.kerf)),
+            ouvrant_length: data.ouvrant_length == null ? '6' : displayNumber(Number(data.ouvrant_length)),
+            profile_1_depart_length: data.profile_1_depart_length == null ? '6' : displayNumber(Number(data.profile_1_depart_length)),
+            profile_2_depart_long_length: data.profile_2_depart_long_length == null ? '6' : displayNumber(Number(data.profile_2_depart_long_length)),
+            profile_2_depart_short_length: data.profile_2_depart_short_length == null ? '6' : displayNumber(Number(data.profile_2_depart_short_length)),
           });
         }
       } catch (err) {
@@ -115,7 +116,7 @@ export default function WorkshopSettingsPage() {
         kerf: Number(settings.kerf),
         ouvrant_length: settings.ouvrant_length.trim() ? Number(settings.ouvrant_length) : null,
         profile_1_depart_length: settings.profile_1_depart_length.trim() ? Number(settings.profile_1_depart_length) : null,
-        profile_2_depart_long_length: settings.profile_2_depart_long_length.trim() ? Number(settings.profile_2_depart_long_length) : null,
+        profile_2_depart_long_length: settings.profile_2_depart_long_length.trim() ? Number(settings.profile_2_depart_length) : null,
         profile_2_depart_short_length: settings.profile_2_depart_short_length.trim() ? Number(settings.profile_2_depart_short_length) : null,
         updated_at: new Date().toISOString(),
       };
