@@ -33,8 +33,8 @@
     page-break-after: avoid !important;
   }
 
-  .print\\:hidden { display: none !important; }
-  .print\\:shadow-none { box-shadow: none !important; }
+  .print\:hidden { display: none !important; }
+  .print\:shadow-none { box-shadow: none !important; }
 
   main > div > section {
     margin: 0 0 7mm !important;
@@ -98,7 +98,7 @@
     margin-bottom: 6mm !important;
   }
 
-  main > div > section:nth-of-type(6) .lg\\:grid-cols-2 {
+  main > div > section:nth-of-type(6) .lg\:grid-cols-2 {
     grid-template-columns: 1fr !important;
   }
 
