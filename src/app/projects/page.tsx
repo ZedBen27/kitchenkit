@@ -55,31 +55,31 @@ export default function ProjectsPage() {
       {loading ? <tr><td colSpan={3} className="empty">جارٍ التحميل...</td></tr> : projects.map(p => {
         const c = p.client_id ? clients[p.client_id] : undefined;
         return <tr key={p.id}>
-          <td>
-            <div className="project-cell">
-              <strong>{p.name}</strong>
-              <div className="project-meta" dir="rtl">
+          <td className="!whitespace-normal">
+            <div className="flex min-w-[300px] flex-col gap-1 py-0.5">
+              <strong className="text-sm font-extrabold text-foreground">{p.name}</strong>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-muted-foreground" dir="rtl">
                 <span>{c?.name || 'بدون عميل'}</span>
-                <span>•</span>
+                <span aria-hidden="true">•</span>
                 <span dir="ltr">{c?.phone || '—'}</span>
-                <span>•</span>
+                <span aria-hidden="true">•</span>
                 <span>{c?.address || '—'}</span>
               </div>
             </div>
           </td>
           <td><span className={`badge status-badge ${statusClasses[p.status] || 'bg-slate-100 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300'}`}>{labels[p.status] || p.status}</span></td>
           <td>
-            <div className="project-actions">
+            <div className="relative flex items-center gap-2">
               <Link className="btn" href={`/projects/${p.id}/boxes`}>فتح</Link>
-              <div className="status-menu-wrap">
-                <button type="button" className="btn" onClick={() => setOpenStatusId(current => current === p.id ? null : p.id)} disabled={updatingStatusId === p.id}>
+              <div className="relative">
+                <button type="button" className="btn" onClick={() => setOpenStatusId(current => current === p.id ? null : p.id)} disabled={updatingStatusId === p.id} aria-haspopup="menu" aria-expanded={openStatusId === p.id}>
                   {updatingStatusId === p.id ? 'جارٍ التحديث...' : 'تغيير الحالة'}
                 </button>
-                {openStatusId === p.id && <div className="status-menu" role="menu">
-                  {statusOptions.map(option => <button key={option} type="button" className="status-menu-item" onClick={() => changeStatus(p.id, option)} disabled={option === p.status}>
-                    <span className={`status-dot ${option}`} />
+                {openStatusId === p.id && <div className="absolute right-0 z-50 mt-2 min-w-[175px] overflow-hidden rounded-xl border border-border bg-card p-1.5 shadow-xl" role="menu">
+                  {statusOptions.map(option => <button key={option} type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-xs font-bold text-foreground transition hover:bg-muted disabled:cursor-default disabled:opacity-70" onClick={() => changeStatus(p.id, option)} disabled={option === p.status}>
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${option === 'draft' ? 'bg-amber-500' : option === 'in_progress' ? 'bg-blue-500' : option === 'completed' ? 'bg-emerald-500' : option === 'cancelled' ? 'bg-red-500' : 'bg-slate-400'}`} />
                     <span>{labels[option]}</span>
-                    {option === p.status && <span className="status-current">الحالية</span>}
+                    {option === p.status && <span className="mr-auto text-[10px] font-medium text-muted-foreground">الحالية</span>}
                   </button>)}
                 </div>}
               </div>
