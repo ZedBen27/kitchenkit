@@ -71,15 +71,15 @@ export default function ProjectsPage() {
           <td>
             <div className="relative flex items-center gap-2">
               <Link className="btn" href={`/projects/${p.id}/boxes`}>فتح</Link>
-              <div className="relative">
-                <button type="button" className="btn" onClick={() => setOpenStatusId(current => current === p.id ? null : p.id)} disabled={updatingStatusId === p.id} aria-haspopup="menu" aria-expanded={openStatusId === p.id}>
+              <div className="relative w-[175px]">
+                <button type="button" className="btn w-full justify-center" onClick={() => setOpenStatusId(current => current === p.id ? null : p.id)} disabled={updatingStatusId === p.id} aria-haspopup="menu" aria-expanded={openStatusId === p.id}>
                   {updatingStatusId === p.id ? 'جارٍ التحديث...' : 'تغيير الحالة'}
                 </button>
-                {openStatusId === p.id && <div className="absolute right-0 z-50 mt-2 min-w-[175px] overflow-hidden rounded-xl border border-border bg-white p-1.5 text-slate-900 shadow-xl dark:bg-slate-900 dark:text-slate-100" role="menu">
-                  {statusOptions.map(option => <button key={option} type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-xs font-bold text-inherit transition hover:bg-slate-100 disabled:cursor-default disabled:opacity-70 dark:hover:bg-slate-800" onClick={() => changeStatus(p.id, option)} disabled={option === p.status}>
+                {openStatusId === p.id && <div className="absolute right-0 z-50 mt-2 w-full overflow-hidden rounded-xl border border-border bg-[hsl(var(--card))] p-1.5 text-[hsl(var(--foreground))] shadow-xl" role="menu">
+                  {statusOptions.map(option => <button key={option} type="button" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-xs font-bold text-inherit transition hover:bg-[hsl(var(--muted))] disabled:cursor-default disabled:opacity-70" onClick={() => changeStatus(p.id, option)} disabled={option === p.status}>
                     <span className={`h-2 w-2 shrink-0 rounded-full ${option === 'draft' ? 'bg-amber-500' : option === 'in_progress' ? 'bg-blue-500' : option === 'completed' ? 'bg-emerald-500' : option === 'cancelled' ? 'bg-red-500' : 'bg-slate-400'}`} />
                     <span>{labels[option]}</span>
-                    {option === p.status && <span className="mr-auto text-[10px] font-medium text-slate-500 dark:text-slate-400">الحالية</span>}
+                    {option === p.status && <span className="mr-auto text-[10px] font-medium text-muted-foreground">الحالية</span>}
                   </button>)}
                 </div>}
               </div>
