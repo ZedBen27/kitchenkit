@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 type Part = {
   material: string;
   part_type: string;
+  length: number;
   quantity: number;
 };
 
@@ -17,7 +18,14 @@ type Accessory = {
 };
 
 type CutPlan = {
-  material: 'Resine' | 'Aluco';
+  material: 'Résine' | 'Aluco' | 'Resine';
+};
+
+type WorkshopLengths = {
+  ouvrant_length: number | null;
+  profile_1_depart_length: number | null;
+  profile_2_depart_long_length: number | null;
+  profile_2_depart_short_length: number | null;
 };
 
 type PurchaseRow = {
@@ -39,8 +47,6 @@ const accessoryOrder = [
   'Pied',
 ];
 
-const ouvrantOrder = ['Ouvrant H', 'Ouvrant L'];
-
 export default function WorkshopPurchasesPage() {
   const params = useParams<{ jobId: string }>();
   const [projectId, setProjectId] = useState('');
@@ -49,6 +55,12 @@ export default function WorkshopPurchasesPage() {
   const [accessories, setAccessories] = useState<Accessory[]>([]);
   const [resinSheets, setResinSheets] = useState(0);
   const [alucoSheets, setAlucoSheets] = useState(0);
+  const [workshopLengths, setWorkshopLengths] = useState<WorkshopLengths>({
+    ouvrant_length: null,
+    profile_1_depart_length: null,
+    profile_2_depart_long_length: null,
+    profile_2_depart_short_length: null,
+  });
   const [colors, setColors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -70,7 +82,7 @@ export default function WorkshopPurchasesPage() {
         if (jobError) throw jobError;
 
         const [{ data: project, error: projectError }, { data: boxes, error: boxesError }, { data: savedRows, error: savedError }, { data: cutPlans, error: cutPlansError }] = await Promise.all([
-          supabase.from('projects').select('name').eq('id', job.project_id).single(),
+          supabase.from('projects').select('name,organization_id').eq('id', job.project_id).single(),
           supabase.from('project_boxes').select('id').eq('project_id', job.project_id),
           supabase.from('workshop_purchases').select('material,color').eq('project_id', job.project_id),
           supabase.from('cut_plans').select('material').eq('project_id', job.project_id),
@@ -81,13 +93,26 @@ export default function WorkshopPurchasesPage() {
         if (savedError) throw savedError;
         if (cutPlansError) throw cutPlansError;
 
+        const { data: workshopSettings, error: workshopSettingsError } = await supabase
+          .from('workshop_settings')
+          .select('ouvrant_length,profile_1_depart_length,profile_2_depart_long_length,profile_2_depart_short_length')
+          .eq('organization_id', project.organization_id)
+          .maybeSingle();
+        if (workshopSettingsError) throw workshopSettingsError;
+
         setProjectId(job.project_id);
         setProjectName(project.name || 'المشروع');
+        setWorkshopLengths({
+          ouvrant_length: workshopSettings?.ouvrant_length == null ? null : Number(workshopSettings.ouvrant_length),
+          profile_1_depart_length: workshopSettings?.profile_1_depart_length == null ? null : Number(workshopSettings.profile_1_depart_length),
+          profile_2_depart_long_length: workshopSettings?.profile_2_depart_long_length == null ? null : Number(workshopSettings.profile_2_depart_long_length),
+          profile_2_depart_short_length: workshopSettings?.profile_2_depart_short_length == null ? null : Number(workshopSettings.profile_2_depart_short_length),
+        });
 
         const boxIds = (boxes || []).map((box) => box.id);
         if (boxIds.length) {
           const [{ data: partRows, error: partError }, { data: accessoryRows, error: accessoryError }] = await Promise.all([
-            supabase.from('box_parts').select('material,part_type,quantity').in('box_id', boxIds),
+            supabase.from('box_parts').select('material,part_type,length,quantity').in('box_id', boxIds),
             supabase.from('box_accessories').select('accessory_type,quantity').in('box_id', boxIds),
           ]);
           if (partError) throw partError;
@@ -100,7 +125,7 @@ export default function WorkshopPurchasesPage() {
         }
 
         const plans = (cutPlans || []) as CutPlan[];
-        setResinSheets(plans.filter((plan) => plan.material === 'Resine').length);
+        setResinSheets(plans.filter((plan) => plan.material === 'Résine' || plan.material === 'Resine').length);
         setAlucoSheets(plans.filter((plan) => plan.material === 'Aluco').length);
         setColors(Object.fromEntries((savedRows || []).map((row) => [row.material, row.color || ''])));
       } catch (err) {
@@ -126,23 +151,42 @@ export default function WorkshopPurchasesPage() {
       });
     };
 
-    const profileTotals = new Map<string, number>();
-    const ouvrantTotals = new Map<string, number>();
+    const profileLengthTotals = new Map<string, number>();
+    let ouvrantLengthTotal = 0;
 
     for (const part of parts) {
       const type = String(part.part_type || '').trim();
-      if (!type) continue;
+      const length = Number(part.length || 0);
+      const quantity = Number(part.quantity || 0);
+      if (!type || length <= 0 || quantity <= 0) continue;
 
-      if (part.material === 'Profile') {
-        profileTotals.set(type, (profileTotals.get(type) || 0) + Number(part.quantity || 0));
+      if (part.material === 'Profile' && profileOrder.includes(type)) {
+        profileLengthTotals.set(type, (profileLengthTotals.get(type) || 0) + length * quantity);
       } else if (part.material === 'Ouvrant') {
-        ouvrantTotals.set(type, (ouvrantTotals.get(type) || 0) + Number(part.quantity || 0));
+        ouvrantLengthTotal += length * quantity;
       }
     }
 
-    profileOrder.forEach((type, index) => add(`Profile:${type}`, `Profile — ${type}`, profileTotals.get(type) || 0, 'قطعة', index));
-    for (const [type, quantity] of profileTotals) {
-      if (!profileOrder.includes(type)) add(`Profile:${type}`, `Profile — ${type}`, quantity, 'قطعة', 50);
+    const barQuantity = (totalLength: number, barLength: number | null) => {
+      if (totalLength <= 0 || !barLength || barLength <= 0) return 0;
+      return Math.ceil(totalLength / barLength);
+    };
+
+    const profileBars = [
+      { type: '1Départ', length: workshopLengths.profile_1_depart_length, order: 0 },
+      { type: '2 Départ Long', length: workshopLengths.profile_2_depart_long_length, order: 1 },
+      { type: '2 Départ Court', length: workshopLengths.profile_2_depart_short_length, order: 2 },
+    ];
+
+    profileBars.forEach(({ type, length, order }) => {
+      const totalLength = profileLengthTotals.get(type) || 0;
+      const quantity = barQuantity(totalLength, length);
+      if (quantity > 0) add(`Profile:${type}`, `Profile — ${type}`, quantity, 'قضيب', order);
+    });
+
+    if (ouvrantLengthTotal > 0) {
+      const quantity = barQuantity(ouvrantLengthTotal, workshopLengths.ouvrant_length);
+      if (quantity > 0) add('Ouvrant', 'Ouvrant', quantity, 'قضيب', 200);
     }
 
     const accessoryTotals = new Map<string, number>();
@@ -156,18 +200,13 @@ export default function WorkshopPurchasesPage() {
       if (!accessoryOrder.includes(type)) add(`Accessoire:${type}`, `Accessoire — ${type}`, quantity, 'قطعة', 150);
     }
 
-    ouvrantOrder.forEach((type, index) => add(`Ouvrant:${type}`, `Ouvrant — ${type}`, ouvrantTotals.get(type) || 0, 'قطعة', 200 + index));
-    for (const [type, quantity] of ouvrantTotals) {
-      if (!ouvrantOrder.includes(type)) add(`Ouvrant:${type}`, `Ouvrant — ${type}`, quantity, 'قطعة', 250);
-    }
-
     if (resinSheets > 0) add('Résine', 'Résine', resinSheets, 'لوح كامل', 300);
     if (alucoSheets > 0) add('Aluco', 'Aluco', alucoSheets, 'لوح كامل', 301);
 
     return [...totals.entries()]
       .sort(([, a], [, b]) => a.order - b.order || a.material.localeCompare(b.material, 'fr'))
       .map(([key, row]) => ({ ...row, key, color: colors[key] || colors[row.material] || '' }));
-  }, [parts, accessories, resinSheets, alucoSheets, colors]);
+  }, [parts, accessories, resinSheets, alucoSheets, workshopLengths, colors]);
 
   const setColor = (key: string, color: string) => {
     setColors((current) => ({ ...current, [key]: color }));
@@ -223,7 +262,7 @@ export default function WorkshopPurchasesPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
             <div>
               <h2 className="text-lg font-black">جدول الشراء</h2>
-              <p className="mt-1 text-xs text-slate-500">كل نوع من البروفيل والإكسسوار يظهر كسطر مستقل. Résine وAluco محسوبان كألواح كاملة من مخطط التحسين.</p>
+              <p className="mt-1 text-xs text-slate-500">البروفيلات وOuvrant محسوبة من مجموع أطوال القطع ÷ طول القضيب القياسي، مع التقريب إلى قضيب كامل. Résine وAluco محسوبان كألواح كاملة من مخطط التحسين.</p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{rows.length} أصناف</span>
           </div>
@@ -266,7 +305,7 @@ export default function WorkshopPurchasesPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6 print:hidden">
-            <p className="text-xs text-slate-500">الكميات تلقائية من الحسابات ومخطط القص؛ يمكنك تعديل اللون فقط.</p>
+            <p className="text-xs text-slate-500">الكميات تلقائية من أطوال القطع وإعدادات الورشة ومخطط القص؛ يمكنك تعديل اللون فقط.</p>
             <button onClick={saveColors} disabled={saving || loading || !rows.length} className="rounded-xl bg-[hsl(var(--primary))] px-5 py-2.5 text-sm font-black text-[hsl(var(--primary-foreground))] disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? 'جارٍ الحفظ…' : 'حفظ الألوان'}
             </button>
