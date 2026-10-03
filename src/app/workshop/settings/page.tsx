@@ -17,11 +17,16 @@ type WorkshopSettings = {
   aluco_width: string;
   aluco_height: string;
   kerf: string;
+  ouvrant_length: string;
+  profile_1_depart_length: string;
+  profile_2_depart_long_length: string;
+  profile_2_depart_short_length: string;
 };
 
 const defaults: WorkshopSettings = {
   a: '5.3', b: '1.7', b2: '3.4', c: '4', t: '', r: '',
   resin_width: '2.44', resin_height: '1.22', aluco_width: '2.44', aluco_height: '1.22', kerf: '0.003',
+  ouvrant_length: '', profile_1_depart_length: '', profile_2_depart_long_length: '', profile_2_depart_short_length: '',
 };
 
 const cmToM = (value: string) => Number(value) / 100;
@@ -53,7 +58,7 @@ export default function WorkshopSettingsPage() {
 
         const { data, error: settingsError } = await supabase
           .from('workshop_settings')
-          .select('a,b,b2,c,t,r,resin_width,resin_height,aluco_width,aluco_height,kerf')
+          .select('a,b,b2,c,t,r,resin_width,resin_height,aluco_width,aluco_height,kerf,ouvrant_length,profile_1_depart_length,profile_2_depart_long_length,profile_2_depart_short_length')
           .eq('organization_id', membership.organization_id)
           .maybeSingle();
         if (settingsError) throw settingsError;
@@ -70,6 +75,10 @@ export default function WorkshopSettingsPage() {
             aluco_width: String(data.aluco_width),
             aluco_height: String(data.aluco_height),
             kerf: String(data.kerf),
+            ouvrant_length: data.ouvrant_length == null ? '' : String(data.ouvrant_length),
+            profile_1_depart_length: data.profile_1_depart_length == null ? '' : String(data.profile_1_depart_length),
+            profile_2_depart_long_length: data.profile_2_depart_long_length == null ? '' : String(data.profile_2_depart_long_length),
+            profile_2_depart_short_length: data.profile_2_depart_short_length == null ? '' : String(data.profile_2_depart_short_length),
           });
         }
       } catch (err) {
@@ -104,6 +113,10 @@ export default function WorkshopSettingsPage() {
         aluco_width: Number(settings.aluco_width),
         aluco_height: Number(settings.aluco_height),
         kerf: Number(settings.kerf),
+        ouvrant_length: settings.ouvrant_length.trim() ? Number(settings.ouvrant_length) : null,
+        profile_1_depart_length: settings.profile_1_depart_length.trim() ? Number(settings.profile_1_depart_length) : null,
+        profile_2_depart_long_length: settings.profile_2_depart_long_length.trim() ? Number(settings.profile_2_depart_long_length) : null,
+        profile_2_depart_short_length: settings.profile_2_depart_short_length.trim() ? Number(settings.profile_2_depart_short_length) : null,
         updated_at: new Date().toISOString(),
       };
       const { error: saveError } = await supabase.from('workshop_settings').upsert(payload, { onConflict: 'organization_id' });
@@ -148,6 +161,16 @@ export default function WorkshopSettingsPage() {
                 <NumberField label="C — Aluco" value={settings.c} unit="mm" onChange={(v) => update('c', v)} required />
                 <NumberField label="T — الرفوف (L)" value={settings.t} unit="cm" onChange={(v) => update('t', v)} />
                 <NumberField label="R — الرفوف (P)" value={settings.r} unit="cm" onChange={(v) => update('r', v)} />
+              </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <SectionTitle title="أطوال القضبان" description="طول القضيب القياسي الذي تُشترى منه المقاطع. الوحدة بالمتر، وتُحفظ هذه القيم كإعدادات عامة للورشة." />
+              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <NumberField label="Ouvrant" value={settings.ouvrant_length} unit="m" onChange={(v) => update('ouvrant_length', v)} />
+                <NumberField label="1Départ" value={settings.profile_1_depart_length} unit="m" onChange={(v) => update('profile_1_depart_length', v)} />
+                <NumberField label="2Départs Long" value={settings.profile_2_depart_long_length} unit="m" onChange={(v) => update('profile_2_depart_long_length', v)} />
+                <NumberField label="2Départs Court" value={settings.profile_2_depart_short_length} unit="m" onChange={(v) => update('profile_2_depart_short_length', v)} />
               </div>
             </section>
 
