@@ -1,0 +1,73 @@
+/* KO Sans — Arabic UI typography only. The English/international version keeps its existing font stack. */
+@font-face {
+  font-family: 'KO Sans';
+  src: url('/fonts/KOSans-Thin.otf') format('opentype');
+  font-style: normal;
+  font-weight: 100;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KO Sans';
+  src: url('/fonts/KOSans-ExtraLight.otf') format('opentype');
+  font-style: normal;
+  font-weight: 200;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KO Sans';
+  src: url('/fonts/KOSans-Light.otf') format('opentype');
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KO Sans';
+  src: url('/fonts/KOSans-Regular.otf') format('opentype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KO Sans';
+  src: url('/fonts/KOSans-Medium.otf') format('opentype');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KO Sans';
+  src: url('/fonts/KOSans-SemiBold.otf') format('opentype');
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'KO Sans';
+  src: url('/fonts/KOSans-Bold.otf') format('opentype');
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+}
+
+/* RootLayout declares lang="ar", so KO Sans is scoped to the Arabic build. */
+html[lang='ar'] body {
+  font-family: 'KO Sans', Arial, 'Noto Sans Arabic', sans-serif;
+  font-synthesis: none;
+}
+
+html[lang='ar'] button,
+html[lang='ar'] input,
+html[lang='ar'] select,
+html[lang='ar'] textarea {
+  font-family: inherit;
+}
+
+/* Keep rotated dimension labels optically aligned with their horizontal counterparts. */
+html[lang='ar'] [style*='writing-mode: vertical-rl'] {
+  font-family: 'KO Sans', Arial, 'Noto Sans Arabic', sans-serif;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-orientation: sideways;
+  -webkit-text-orientation: sideways;
+  text-rendering: geometricPrecision;
+}
