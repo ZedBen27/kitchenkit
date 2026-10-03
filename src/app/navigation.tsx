@@ -23,6 +23,20 @@ export default function Navigation() {
     router.refresh();
   }
 
+  const bottomItemStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    width: '100%',
+    textDecoration: 'none',
+    padding: '9px 0',
+  } as const;
+
+  const dividerStyle = {
+    ...bottomItemStyle,
+    borderBottom: '1px solid hsl(var(--border) / .75)',
+  } as const;
+
   return (
     <aside className="sidebar">
       <Link href="/" className="brand">KitchenKit</Link>
@@ -34,15 +48,23 @@ export default function Navigation() {
         ))}
       </nav>
       <div className="sidebar-bottom">
-        <Link href="/workshop/settings" className={pathname.startsWith('/workshop/settings') ? 'active' : ''}>
+        <Link
+          href="/workshop/settings"
+          className={pathname.startsWith('/workshop/settings') ? 'active' : ''}
+          style={dividerStyle}
+        >
           <Settings2 size={18} strokeWidth={1.9} aria-hidden="true" />
           <span>إعدادات الورشة</span>
         </Link>
-        <Link href="/settings" className={pathname === '/settings' ? 'active' : ''}>
+        <Link
+          href="/settings"
+          className={pathname === '/settings' ? 'active' : ''}
+          style={dividerStyle}
+        >
           <UserCog size={18} strokeWidth={1.9} aria-hidden="true" />
           <span>إعدادات الحساب</span>
         </Link>
-        <button onClick={signOut}>
+        <button onClick={signOut} style={bottomItemStyle}>
           <LogOut size={18} strokeWidth={1.9} aria-hidden="true" />
           <span>تسجيل الخروج</span>
         </button>
