@@ -15,7 +15,6 @@ import {
   Settings2,
   Sparkles,
   SquareStack,
-  Trash2,
 } from 'lucide-react';
 import { optimizeCuts, partsFromCalculations, type OptimizationResult } from '@/domain/optimization/cut-optimizer';
 import { getLabelLayout } from '@/domain/optimization/label-layout';
@@ -127,7 +126,6 @@ export default function CutOptimizerPage() {
     () => alucoParts.reduce((sum, part) => sum + Math.max(0, Number(part.quantity) || 0), 0),
     [alucoParts],
   );
-  const totalWaste = (resin?.totalWasteArea || 0) + (aluco?.totalWasteArea || 0);
 
   useEffect(() => {
     if (loading) return;
@@ -229,7 +227,6 @@ export default function CutOptimizerPage() {
               <MaterialSummary title="Résine" sheets={resin?.sheets.length || 0} pieces={resinPartQuantity} />
               <MaterialSummary title="Aluco" sheets={aluco?.sheets.length || 0} pieces={alucoPartQuantity} />
               <MiniStat icon={<Maximize2 className="h-4 w-4" />} label="المواد" value="2" />
-              <MiniStat icon={<Trash2 className="h-4 w-4" />} label="الهدر الإجمالي" value={`${totalWaste.toFixed(2)} m²`} />
             </div>
           </div>
         </header>
