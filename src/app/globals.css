@@ -10,6 +10,16 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 a { color: inherit; }
 
+/* Keep dimension text visually consistent when a horizontal label is rotated vertically. */
+[style*="writing-mode: vertical-rl"] {
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-orientation: sideways;
+  -webkit-text-orientation: sideways;
+  text-rendering: geometricPrecision;
+}
+
 .shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); direction: ltr; }
 .sidebar { direction: rtl; border-inline-end: 1px solid hsl(var(--border)); background: hsl(var(--card)); padding: 24px 16px; display: flex; flex-direction: column; min-height: 100vh; }
 .brand { font-size: 24px; font-weight: 900; letter-spacing: -.04em; margin: 4px 8px 34px; }
