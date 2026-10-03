@@ -4,17 +4,13 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Check,
-  ChevronDown,
   CircleHelp,
   Clock3,
   Layers3,
   Loader2,
   Maximize2,
-  Ruler,
   Save,
-  Settings2,
   Sparkles,
-  SquareStack,
 } from 'lucide-react';
 import { optimizeCuts, partsFromCalculations, type OptimizationResult } from '@/domain/optimization/cut-optimizer';
 import { getLabelLayout } from '@/domain/optimization/label-layout';
@@ -33,22 +29,12 @@ type DbPart = {
 
 type DbBox = { id: string; number: number };
 
-type FieldProps = {
-  label: string;
-  value: string;
-  setValue: (value: string) => void;
-};
-
 export default function CutOptimizerPage() {
   const params = useParams<{ jobId: string }>();
   const [parts, setParts] = useState<DbPart[]>([]);
   const [boxNumbers, setBoxNumbers] = useState<Map<string, number>>(new Map());
   const [projectId, setProjectId] = useState('');
   const [projectName, setProjectName] = useState('');
-  const [resinW, setResinW] = useState('2.44');
-  const [resinH, setResinH] = useState('1.22');
-  const [alucoW, setAlucoW] = useState('2.44');
-  const [alucoH, setAlucoH] = useState('1.22');
   const [kerf, setKerf] = useState('0.003');
   const [loading, setLoading] = useState(true);
   const [optimizing, setOptimizing] = useState(false);
@@ -57,7 +43,6 @@ export default function CutOptimizerPage() {
   const [error, setError] = useState('');
   const [resin, setResin] = useState<OptimizationResult | null>(null);
   const [aluco, setAluco] = useState<OptimizationResult | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +57,7 @@ export default function CutOptimizerPage() {
         if (jobError) throw jobError;
 
         const [{ data: project, error: projectError }, { data: boxes, error: boxesError }] = await Promise.all([
-          supabase.from('projects').select('name').eq('id', job.project_id).single(),
+          supabase.from('projects').select('name,organization_id').eq('id', job.project_id).single(),
           supabase.from('project_boxes').select('id,number').eq('project_id', job.project_id).order('number'),
         ]);
         if (projectError) throw projectError;
@@ -81,6 +66,13 @@ export default function CutOptimizerPage() {
 
         setProjectId(job.project_id);
         setProjectName(project.name);
+        const { data: workshopSettings } = await supabase
+          .from('workshop_settings')
+          .select('kerf')
+          .eq('organization_id', project.organization_id)
+          .maybeSingle();
+        if (!cancelled && workshopSettings) setKerf(String(workshopSettings.kerf));
+
         const boxRows = (boxes || []) as DbBox[];
         setBoxNumbers(new Map(boxRows.map((box) => [box.id, box.number])));
         const boxIds = boxRows.map((box) => box.id);
@@ -137,10 +129,10 @@ export default function CutOptimizerPage() {
       try {
         const [resinResult, alucoResult] = await Promise.all([
           resinParts.length
-            ? optimizeCuts('Résine', { width: Number(resinW), height: Number(resinH) }, resinParts, Number(kerf))
+            ? optimizeCuts('Résine', { width: 2.44, height: 1.22 }, resinParts, Number(kerf))
             : Promise.resolve(null),
           alucoParts.length
-            ? optimizeCuts('Aluco', { width: Number(alucoW), height: Number(alucoH) }, alucoParts, Number(kerf))
+            ? optimizeCuts('Aluco', { width: 2.44, height: 1.22 }, alucoParts, Number(kerf))
             : Promise.resolve(null),
         ]);
         if (!cancelled) {
@@ -156,7 +148,7 @@ export default function CutOptimizerPage() {
     return () => {
       cancelled = true;
     };
-  }, [loading, resinParts, alucoParts, resinW, resinH, alucoW, alucoH, kerf]);
+  }, [loading, resinParts, alucoParts, kerf]);
 
   async function savePlans() {
     if (saving) return;
@@ -233,25 +225,10 @@ export default function CutOptimizerPage() {
 
         {error && <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><CircleHelp className="mt-0.5 h-5 w-5 shrink-0" /><p className="leading-6">{error}</p></div>}
 
-        <section className="mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <button type="button" onClick={() => setSettingsOpen((open) => !open)} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-right hover:bg-slate-50 sm:px-6">
-            <span className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700"><Settings2 className="h-5 w-5" /></span>
-              <span><span className="block text-sm font-black">إعدادات الألواح</span><span className="mt-0.5 block text-xs text-slate-500">الأبعاد الفعلية للوح وسماكة القطع (Kerf)</span></span>
-            </span>
-            <ChevronDown className={`h-5 w-5 text-slate-400 transition ${settingsOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {settingsOpen && <div className="border-t border-slate-100 bg-slate-50/60 p-4 sm:p-6">
-            <div className="grid gap-4 xl:grid-cols-2">
-              <MaterialSettings title="Résine" width={resinW} height={resinH} setWidth={setResinW} setHeight={setResinH} />
-              <MaterialSettings title="Aluco" width={alucoW} height={alucoH} setWidth={setAlucoW} setHeight={setAlucoH} />
-            </div>
-            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100"><Ruler className="h-4 w-4 text-slate-600" /></div><div><p className="text-sm font-bold">سماكة القطع / Kerf</p><p className="text-xs text-slate-500">المسافة التي تستهلكها شفرة القص بين قطعتين.</p></div></div>
-              <div className="w-full sm:max-w-[180px]"><SheetField label="Kerf بالمتر" value={kerf} setValue={setKerf} /></div>
-            </div>
-          </div>}
-        </section>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500 shadow-sm">
+          <span>أبعاد الألواح وKerf تُدار مركزيًا من إعدادات الورشة.</span>
+          <a href="/workshop/settings" className="font-black text-slate-800 underline underline-offset-4">فتح إعدادات الورشة</a>
+        </div>
 
         {loading ? <LoadingState text="جارٍ تحميل قطع المشروع..." /> : optimizing ? <LoadingState text="جارٍ البحث عن أفضل توزيع للقطع..." detail="نختبر التدوير وترتيب القطع قبل عرض النتيجة." /> : !calculated.length ? <EmptyState /> : (
           <>
@@ -272,14 +249,6 @@ function MiniStat({ icon, label, value }: { icon: ReactNode; label: string; valu
 
 function MaterialSummary({ title, sheets, pieces }: { title: string; sheets: number; pieces: number }) {
   return <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3"><div className="flex items-center gap-1.5 text-xs font-black text-slate-600"><Layers3 className="h-4 w-4" />{title}</div><div className="mt-1.5 flex items-end justify-between gap-2"><div><p className="text-[10px] font-semibold text-slate-400">الألواح</p><p className="text-lg font-black tracking-tight text-slate-900">{sheets.toLocaleString('fr-FR')}</p></div><div className="text-right"><p className="text-[10px] font-semibold text-slate-400">القطع</p><p className="text-sm font-black text-slate-700">{pieces.toLocaleString('fr-FR')}</p></div></div></div>;
-}
-
-function MaterialSettings({ title, width, height, setWidth, setHeight }: { title: string; width: string; height: string; setWidth: (value: string) => void; setHeight: (value: string) => void }) {
-  return <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5"><div className="mb-4 flex items-center justify-between gap-3"><span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black text-slate-700">{title}</span><span className="text-xs text-slate-400">عرض × ارتفاع · m</span></div><div className="grid grid-cols-2 gap-3"><SheetField label="العرض" value={width} setValue={setWidth} /><SheetField label="الارتفاع" value={height} setValue={setHeight} /></div></div>;
-}
-
-function SheetField({ label, value, setValue }: FieldProps) {
-  return <label className="block"><span className="mb-1.5 block text-xs font-bold text-slate-600">{label}</span><input type="number" min="0" step="0.001" value={value} onChange={(event) => setValue(event.target.value)} aria-label={label} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" /></label>;
 }
 
 function LoadingState({ text, detail }: { text: string; detail?: string }) {
