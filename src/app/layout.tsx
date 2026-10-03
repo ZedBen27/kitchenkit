@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import './kosans.css';
+import './ibm-plex.css';
 
 export const metadata: Metadata = {
   title: 'KitchenKit',
