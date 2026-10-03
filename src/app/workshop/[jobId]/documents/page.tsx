@@ -34,6 +34,7 @@ const partTypeLabel = (partType: string) => ({
   left: 'جانبي',
   back: 'خلفي',
   shelf: 'رف',
+  door: 'باب',
 }[partType] ?? partType);
 
 function profileRowsForBox(rows: Part[]): ProfileRow[] {
