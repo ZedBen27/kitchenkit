@@ -5,9 +5,41 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
-type Part = { material: string; category: string; quantity: number };
-type Accessory = { quantity: number };
-type PurchaseRow = { material: string; quantity: number; color: string };
+type Part = {
+  material: string;
+  part_type: string;
+  quantity: number;
+};
+
+type Accessory = {
+  accessory_type: string;
+  quantity: number;
+};
+
+type CutPlan = {
+  material: 'Resine' | 'Aluco';
+};
+
+type PurchaseRow = {
+  key: string;
+  material: string;
+  quantity: number;
+  unit: string;
+  color: string;
+};
+
+const profileOrder = ['1Départ', '2 Départ Long', '2 Départ Court'];
+
+const accessoryOrder = [
+  'Coin 3 Départ',
+  'Coin 2 Départ',
+  'Coin Équerre',
+  'Charnière',
+  'Poignée',
+  'Pied',
+];
+
+const ouvrantOrder = ['Ouvrant H', 'Ouvrant L'];
 
 export default function WorkshopPurchasesPage() {
   const params = useParams<{ jobId: string }>();
@@ -15,6 +47,8 @@ export default function WorkshopPurchasesPage() {
   const [projectName, setProjectName] = useState('');
   const [parts, setParts] = useState<Part[]>([]);
   const [accessories, setAccessories] = useState<Accessory[]>([]);
+  const [resinSheets, setResinSheets] = useState(0);
+  const [alucoSheets, setAlucoSheets] = useState(0);
   const [colors, setColors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,7 +59,9 @@ export default function WorkshopPurchasesPage() {
     (async () => {
       try {
         setLoading(true);
+        setError('');
         const supabase = getSupabaseBrowserClient();
+
         const { data: job, error: jobError } = await supabase
           .from('workshop_jobs')
           .select('project_id')
@@ -33,33 +69,39 @@ export default function WorkshopPurchasesPage() {
           .single();
         if (jobError) throw jobError;
 
-        const [{ data: project, error: projectError }, { data: boxes, error: boxesError }] = await Promise.all([
+        const [{ data: project, error: projectError }, { data: boxes, error: boxesError }, { data: savedRows, error: savedError }, { data: cutPlans, error: cutPlansError }] = await Promise.all([
           supabase.from('projects').select('name').eq('id', job.project_id).single(),
           supabase.from('project_boxes').select('id').eq('project_id', job.project_id),
+          supabase.from('workshop_purchases').select('material,color').eq('project_id', job.project_id),
+          supabase.from('cut_plans').select('material').eq('project_id', job.project_id),
         ]);
+
         if (projectError) throw projectError;
         if (boxesError) throw boxesError;
+        if (savedError) throw savedError;
+        if (cutPlansError) throw cutPlansError;
 
         setProjectId(job.project_id);
         setProjectName(project.name || 'المشروع');
 
         const boxIds = (boxes || []).map((box) => box.id);
-        if (!boxIds.length) {
-          setLoading(false);
-          return;
+        if (boxIds.length) {
+          const [{ data: partRows, error: partError }, { data: accessoryRows, error: accessoryError }] = await Promise.all([
+            supabase.from('box_parts').select('material,part_type,quantity').in('box_id', boxIds),
+            supabase.from('box_accessories').select('accessory_type,quantity').in('box_id', boxIds),
+          ]);
+          if (partError) throw partError;
+          if (accessoryError) throw accessoryError;
+          setParts((partRows || []) as Part[]);
+          setAccessories((accessoryRows || []) as Accessory[]);
+        } else {
+          setParts([]);
+          setAccessories([]);
         }
 
-        const [{ data: partRows, error: partError }, { data: accessoryRows, error: accessoryError }, { data: savedRows, error: savedError }] = await Promise.all([
-          supabase.from('box_parts').select('material,category,quantity').in('box_id', boxIds),
-          supabase.from('box_accessories').select('quantity').in('box_id', boxIds),
-          supabase.from('workshop_purchases').select('material,color').eq('project_id', job.project_id),
-        ]);
-        if (partError) throw partError;
-        if (accessoryError) throw accessoryError;
-        if (savedError) throw savedError;
-
-        setParts((partRows || []) as Part[]);
-        setAccessories((accessoryRows || []) as Accessory[]);
+        const plans = (cutPlans || []) as CutPlan[];
+        setResinSheets(plans.filter((plan) => plan.material === 'Resine').length);
+        setAlucoSheets(plans.filter((plan) => plan.material === 'Aluco').length);
         setColors(Object.fromEntries((savedRows || []).map((row) => [row.material, row.color || ''])));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'تعذر تحميل قائمة السلع.');
@@ -70,41 +112,85 @@ export default function WorkshopPurchasesPage() {
   }, [params.jobId]);
 
   const rows = useMemo<PurchaseRow[]>(() => {
-    const totals = new Map<string, number>();
+    const totals = new Map<string, { material: string; quantity: number; unit: string; order: number }>();
+
+    const add = (key: string, material: string, quantity: number, unit: string, order: number) => {
+      const amount = Number(quantity || 0);
+      if (amount <= 0) return;
+      const current = totals.get(key);
+      totals.set(key, {
+        material,
+        quantity: (current?.quantity || 0) + amount,
+        unit,
+        order: current?.order ?? order,
+      });
+    };
+
+    const profileTotals = new Map<string, number>();
+    const ouvrantTotals = new Map<string, number>();
+
     for (const part of parts) {
-      const material = String(part.material || '').trim() || 'غير محدد';
-      totals.set(material, (totals.get(material) || 0) + Number(part.quantity || 0));
+      const type = String(part.part_type || '').trim();
+      if (!type) continue;
+
+      if (part.material === 'Profile') {
+        profileTotals.set(type, (profileTotals.get(type) || 0) + Number(part.quantity || 0));
+      } else if (part.material === 'Ouvrant') {
+        ouvrantTotals.set(type, (ouvrantTotals.get(type) || 0) + Number(part.quantity || 0));
+      }
     }
-    const accessoryTotal = accessories.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    if (accessoryTotal > 0) totals.set('Accessoire', (totals.get('Accessoire') || 0) + accessoryTotal);
 
-    return Array.from(totals.entries())
-      .filter(([, quantity]) => quantity > 0)
-      .sort(([a], [b]) => a.localeCompare(b, 'fr'))
-      .map(([material, quantity]) => ({ material, quantity, color: colors[material] || '' }));
-  }, [parts, accessories, colors]);
+    profileOrder.forEach((type, index) => add(`Profile:${type}`, `Profile — ${type}`, profileTotals.get(type) || 0, 'قطعة', index));
+    for (const [type, quantity] of profileTotals) {
+      if (!profileOrder.includes(type)) add(`Profile:${type}`, `Profile — ${type}`, quantity, 'قطعة', 50);
+    }
 
-  const setColor = (material: string, color: string) => {
-    setColors((current) => ({ ...current, [material]: color }));
+    const accessoryTotals = new Map<string, number>();
+    for (const accessory of accessories) {
+      const type = String(accessory.accessory_type || '').trim();
+      if (!type) continue;
+      accessoryTotals.set(type, (accessoryTotals.get(type) || 0) + Number(accessory.quantity || 0));
+    }
+    accessoryOrder.forEach((type, index) => add(`Accessoire:${type}`, `Accessoire — ${type}`, accessoryTotals.get(type) || 0, 'قطعة', 100 + index));
+    for (const [type, quantity] of accessoryTotals) {
+      if (!accessoryOrder.includes(type)) add(`Accessoire:${type}`, `Accessoire — ${type}`, quantity, 'قطعة', 150);
+    }
+
+    ouvrantOrder.forEach((type, index) => add(`Ouvrant:${type}`, `Ouvrant — ${type}`, ouvrantTotals.get(type) || 0, 'قطعة', 200 + index));
+    for (const [type, quantity] of ouvrantTotals) {
+      if (!ouvrantOrder.includes(type)) add(`Ouvrant:${type}`, `Ouvrant — ${type}`, quantity, 'قطعة', 250);
+    }
+
+    if (resinSheets > 0) add('Résine', 'Résine', resinSheets, 'لوح كامل', 300);
+    if (alucoSheets > 0) add('Aluco', 'Aluco', alucoSheets, 'لوح كامل', 301);
+
+    return [...totals.entries()]
+      .sort(([, a], [, b]) => a.order - b.order || a.material.localeCompare(b.material, 'fr'))
+      .map(([key, row]) => ({ ...row, key, color: colors[key] || colors[row.material] || '' }));
+  }, [parts, accessories, resinSheets, alucoSheets, colors]);
+
+  const setColor = (key: string, color: string) => {
+    setColors((current) => ({ ...current, [key]: color }));
     setMessage('');
   };
 
   const saveColors = async () => {
-    if (!projectId) return;
+    if (!projectId || !rows.length) return;
     try {
       setSaving(true);
       setMessage('');
+      setError('');
       const supabase = getSupabaseBrowserClient();
       const payload = rows.map((row) => ({
         project_id: projectId,
-        material: row.material,
+        material: row.key,
         quantity: row.quantity,
-        color: colors[row.material] || null,
+        color: colors[row.key] || null,
       }));
-      if (payload.length) {
-        const { error: saveError } = await supabase.from('workshop_purchases').upsert(payload, { onConflict: 'project_id,material' });
-        if (saveError) throw saveError;
-      }
+      const { error: saveError } = await supabase
+        .from('workshop_purchases')
+        .upsert(payload, { onConflict: 'project_id,material' });
+      if (saveError) throw saveError;
       setMessage('تم حفظ ألوان السلع بنجاح.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر حفظ ألوان السلع.');
@@ -121,7 +207,7 @@ export default function WorkshopPurchasesPage() {
             <div>
               <p className="mb-2 text-sm font-semibold text-slate-500">الورشة / المشتريات</p>
               <h1 className="text-3xl font-black tracking-tight">قائمة السلع</h1>
-              <p className="mt-2 text-sm text-slate-500">{projectName || 'المشروع'} — الكميات مجمعة تلقائياً من حسابات جميع المطابخ.</p>
+              <p className="mt-2 text-sm text-slate-500">{projectName || 'المشروع'} — جدول شراء مجمع من الحسابات ومخططات تحسين القص.</p>
             </div>
             <div className="flex flex-wrap gap-2 print:hidden">
               <Link href={`/workshop/${params.jobId}/documents`} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">العودة للوثائق</Link>
@@ -137,47 +223,50 @@ export default function WorkshopPurchasesPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
             <div>
               <h2 className="text-lg font-black">جدول الشراء</h2>
-              <p className="mt-1 text-xs text-slate-500">الكمية للقراءة فقط وتُحدّث من الحسابات. اللون يُدخل يدوياً.</p>
+              <p className="mt-1 text-xs text-slate-500">كل نوع من البروفيل والإكسسوار يظهر كسطر مستقل. Résine وAluco محسوبان كألواح كاملة من مخطط التحسين.</p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{rows.length} أصناف</span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[620px] border-collapse text-sm">
+            <table className="w-full min-w-[760px] border-collapse text-sm">
               <thead>
                 <tr className="bg-slate-50 text-slate-500">
                   <th className="border-b border-slate-200 px-5 py-4 text-right font-bold">#</th>
-                  <th className="border-b border-slate-200 px-5 py-4 text-right font-bold">المادة</th>
+                  <th className="border-b border-slate-200 px-5 py-4 text-right font-bold">المادة / الصنف</th>
                   <th className="border-b border-slate-200 px-5 py-4 text-right font-bold">الكمية المطلوبة</th>
                   <th className="border-b border-slate-200 px-5 py-4 text-right font-bold">اللون</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400">جارٍ حساب قائمة السلع…</td></tr>
+                  <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400">جارٍ إعداد جدول الشراء…</td></tr>
                 ) : rows.length ? rows.map((row, index) => (
-                  <tr key={row.material} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70">
+                  <tr key={row.key} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/70">
                     <td className="px-5 py-4 font-bold text-slate-400">{index + 1}</td>
                     <td className="px-5 py-4 font-black text-slate-800">{row.material}</td>
-                    <td className="px-5 py-4"><span className="inline-flex min-w-16 items-center justify-center rounded-lg bg-slate-100 px-3 py-2 font-black text-slate-800">{row.quantity}</span> <span className="mr-1 text-xs text-slate-400">قطعة</span></td>
+                    <td className="px-5 py-4">
+                      <span className="inline-flex min-w-16 items-center justify-center rounded-lg bg-slate-100 px-3 py-2 font-black text-slate-800">{row.quantity}</span>
+                      <span className="mr-2 text-xs text-slate-400">{row.unit}</span>
+                    </td>
                     <td className="px-5 py-3">
                       <input
-                        value={colors[row.material] || ''}
-                        onChange={(event) => setColor(row.material, event.target.value)}
+                        value={colors[row.key] || ''}
+                        onChange={(event) => setColor(row.key, event.target.value)}
                         placeholder="أدخل اللون…"
                         className="w-full max-w-sm rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100 print:border-slate-300"
                       />
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400">لا توجد سلع محسوبة بعد.</td></tr>
+                  <tr><td colSpan={4} className="px-5 py-12 text-center text-slate-400">لا توجد سلع محسوبة بعد. اعتمد الحسابات ثم احفظ مخططات Résine وAluco من صفحة تحسين القص.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6 print:hidden">
-            <p className="text-xs text-slate-500">يمكنك تعديل اللون في أي وقت، بينما الكمية مرتبطة بالحسابات تلقائياً.</p>
+            <p className="text-xs text-slate-500">الكميات تلقائية من الحسابات ومخطط القص؛ يمكنك تعديل اللون فقط.</p>
             <button onClick={saveColors} disabled={saving || loading || !rows.length} className="rounded-xl bg-[hsl(var(--primary))] px-5 py-2.5 text-sm font-black text-[hsl(var(--primary-foreground))] disabled:cursor-not-allowed disabled:opacity-50">
               {saving ? 'جارٍ الحفظ…' : 'حفظ الألوان'}
             </button>
