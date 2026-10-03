@@ -26,7 +26,7 @@ type WorkshopSettings = {
 const defaults: WorkshopSettings = {
   a: '5.3', b: '1.7', b2: '3.4', c: '4', t: '', r: '',
   resin_width: '2.44', resin_height: '1.22', aluco_width: '2.44', aluco_height: '1.22', kerf: '0.003',
-  ouvrant_length: '', profile_1_depart_length: '', profile_2_depart_long_length: '', profile_2_depart_short_length: '',
+  ouvrant_length: '6', profile_1_depart_length: '6', profile_2_depart_long_length: '6', profile_2_depart_short_length: '6',
 };
 
 const cmToM = (value: string) => Number(value) / 100;
@@ -75,10 +75,10 @@ export default function WorkshopSettingsPage() {
             aluco_width: String(data.aluco_width),
             aluco_height: String(data.aluco_height),
             kerf: String(data.kerf),
-            ouvrant_length: data.ouvrant_length == null ? '' : String(data.ouvrant_length),
-            profile_1_depart_length: data.profile_1_depart_length == null ? '' : String(data.profile_1_depart_length),
-            profile_2_depart_long_length: data.profile_2_depart_long_length == null ? '' : String(data.profile_2_depart_long_length),
-            profile_2_depart_short_length: data.profile_2_depart_short_length == null ? '' : String(data.profile_2_depart_short_length),
+            ouvrant_length: data.ouvrant_length == null ? '6' : String(data.ouvrant_length),
+            profile_1_depart_length: data.profile_1_depart_length == null ? '6' : String(data.profile_1_depart_length),
+            profile_2_depart_long_length: data.profile_2_depart_long_length == null ? '6' : String(data.profile_2_depart_long_length),
+            profile_2_depart_short_length: data.profile_2_depart_short_length == null ? '6' : String(data.profile_2_depart_short_length),
           });
         }
       } catch (err) {
