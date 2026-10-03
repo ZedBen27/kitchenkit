@@ -71,3 +71,20 @@ html[lang='ar'] [style*='writing-mode: vertical-rl'] {
   -webkit-text-orientation: sideways;
   text-rendering: geometricPrecision;
 }
+
+/*
+ * Technical data can contain Arabic UI text next to Latin names, numbers and units.
+ * Let each table cell determine its own bidi direction from its first strong character
+ * instead of inheriting the page RTL direction. This fixes values such as
+ * "1Départ", "2 Départ Long" and "1.000 m" without changing stored data or calculations.
+ */
+html[lang='ar'] tbody td {
+  unicode-bidi: plaintext;
+}
+
+/* Explicit helper for technical values used outside tables. */
+html[lang='ar'] .technical-value,
+html[lang='ar'] [dir='ltr'] {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
