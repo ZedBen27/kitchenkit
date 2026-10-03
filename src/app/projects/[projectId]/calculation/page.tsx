@@ -9,7 +9,16 @@ type DbBox = { id: string; number: number; structure: 'ET' | 'SET' | 'Eco'; box_
 type SettingsRow = { a: number; b: number; b2: number; c: number; t: number | null; r: number | null; handles_enabled: boolean };
 type Part = ReturnType<typeof calculateBox>['parts'][number];
 
-const formatCm = (meters: number) => `${Number(meters * 100).toFixed(2).replace(/\.00$/, '')} cm`;
+const formatCm = (meters: number) => `${Number(meters * 100).toFixed(2).replace(/\\.00$/, '')} cm`;
+
+const partTypeLabel = (partType: string) => ({
+  top: 'علوي',
+  bottom: 'سفلي',
+  right: 'جانبي',
+  left: 'جانبي',
+  back: 'خلفي',
+  shelf: 'رف',
+}[partType] ?? partType);
 
 export default function CalculationPage() {
   const params = useParams<{ projectId: string }>();
@@ -217,7 +226,7 @@ function PartsTable({ parts }: { parts: Part[] }) {
           {parts.map((p, i) => (
             <tr key={`${p.material}-${p.partType}-${p.length}-${p.width ?? ''}-${i}`} className="border-t">
               <td className="p-3">{p.material}</td>
-              <td className="p-3 font-medium">{p.partType}</td>
+              <td className="p-3 font-medium">{partTypeLabel(p.partType)}</td>
               <td className="p-3 whitespace-nowrap" dir="ltr">{formatCm(p.length)}</td>
               <td className="p-3 whitespace-nowrap" dir="ltr">{p.width === undefined ? '—' : formatCm(p.width)}</td>
               <td className="p-3 font-semibold">{p.quantity}</td>
