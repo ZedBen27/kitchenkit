@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Settings2, UserCog, LogOut } from 'lucide-react';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 const items = [
@@ -33,9 +34,18 @@ export default function Navigation() {
         ))}
       </nav>
       <div className="sidebar-bottom">
-        <Link href="/workshop/settings" className={pathname.startsWith('/workshop/settings') ? 'active' : ''}>إعدادات الورشة</Link>
-        <Link href="/settings" className={pathname === '/settings' ? 'active' : ''}>إعدادات الحساب</Link>
-        <button onClick={signOut}>تسجيل الخروج</button>
+        <Link href="/workshop/settings" className={pathname.startsWith('/workshop/settings') ? 'active' : ''}>
+          <Settings2 size={18} strokeWidth={1.9} aria-hidden="true" />
+          <span>إعدادات الورشة</span>
+        </Link>
+        <Link href="/settings" className={pathname === '/settings' ? 'active' : ''}>
+          <UserCog size={18} strokeWidth={1.9} aria-hidden="true" />
+          <span>إعدادات الحساب</span>
+        </Link>
+        <button onClick={signOut}>
+          <LogOut size={18} strokeWidth={1.9} aria-hidden="true" />
+          <span>تسجيل الخروج</span>
+        </button>
       </div>
     </aside>
   );
