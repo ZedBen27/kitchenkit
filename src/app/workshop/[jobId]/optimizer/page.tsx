@@ -356,10 +356,46 @@ function SheetCard({ sheet }: { sheet: OptimizationResult['sheets'][number] }) {
       <div className="pointer-events-none absolute inset-x-0 top-1.5 z-10 text-center text-[9px] font-bold text-slate-400">{sheet.width.toFixed(3)} × {sheet.height.toFixed(3)} m</div>
       {sheet.placements.map((placement) => {
         const layout = getLabelLayout({ width: placement.width, height: placement.height, label: placement.label, dimensionText: `${placement.width.toFixed(3)} × ${placement.height.toFixed(3)} m` });
-        return <div key={placement.id} title={`${placement.label} — ${placement.width.toFixed(3)} × ${placement.height.toFixed(3)}${placement.rotated ? ' m · مدوّرة' : ' m'}`} className="absolute flex flex-col items-center justify-center overflow-hidden border border-slate-300 bg-white/85 px-1 text-center text-slate-800 transition hover:z-20 hover:bg-white hover:shadow-lg" style={{ left: `${(placement.x / sheet.width) * 100}%`, top: `${(placement.y / sheet.height) * 100}%`, width: `${(placement.width / sheet.width) * 100}%`, height: `${(placement.height / sheet.height) * 100}%`, fontSize: `${layout.fontSize}px`, lineHeight: `${layout.lineHeight}px` }}>
-          <span className="max-w-full break-words font-black">{layout.labelLines.map((line, index) => <span key={index} className="block">{line}</span>)}</span>
-          <span className="max-w-full break-words text-slate-500">{layout.dimensionLines.map((line, index) => <span key={index} className="block">{line}</span>)}</span>
-          {placement.rotated && <span className="mt-0.5 text-[9px] font-bold text-blue-600">↻</span>}
+        const horizontalDimension = `${placement.width.toFixed(3)} m`;
+        const verticalDimension = `${placement.height.toFixed(3)} m`;
+        const dimensionFontSize = Math.max(7, Math.min(11, Math.round(layout.fontSize * 0.82)));
+        const labelFontSize = Math.max(8, Math.min(13, layout.fontSize));
+
+        return <div
+          key={placement.id}
+          title={`${placement.label} — ${placement.width.toFixed(3)} × ${placement.height.toFixed(3)}${placement.rotated ? ' m · مدوّرة' : ' m'}`}
+          className="absolute overflow-hidden border border-slate-300 bg-white/90 text-slate-800 transition hover:z-20 hover:bg-white hover:shadow-lg"
+          style={{
+            left: `${(placement.x / sheet.width) * 100}%`,
+            top: `${(placement.y / sheet.height) * 100}%`,
+            width: `${(placement.width / sheet.width) * 100}%`,
+            height: `${(placement.height / sheet.height) * 100}%`,
+          }}
+        >
+          <div className="pointer-events-none absolute inset-x-1 top-1 flex items-center gap-1" style={{ fontSize: `${dimensionFontSize}px`, lineHeight: '1' }}>
+            <span className="h-px flex-1 bg-slate-300" />
+            <span className="shrink-0 whitespace-nowrap font-semibold text-slate-500">{horizontalDimension}</span>
+            <span className="h-px flex-1 bg-slate-300" />
+          </div>
+
+          <div className="pointer-events-none absolute bottom-1 left-1 top-1 flex items-center" style={{ width: '1em', fontSize: `${dimensionFontSize}px` }}>
+            <div className="flex items-center gap-1" style={{ transform: 'rotate(-90deg)', transformOrigin: 'center', whiteSpace: 'nowrap' }}>
+              <span className="h-px w-3 bg-slate-300" />
+              <span className="font-semibold text-slate-500">{verticalDimension}</span>
+              <span className="h-px w-3 bg-slate-300" />
+            </div>
+          </div>
+
+          <div
+            className="absolute inset-0 flex items-center justify-center px-5 py-5 text-center"
+            style={{ fontSize: `${labelFontSize}px`, lineHeight: `${layout.lineHeight}px` }}
+          >
+            <span className="max-w-[72%] break-words font-black leading-tight">
+              {layout.labelLines.map((line, index) => <span key={index} className="block">{line}</span>)}
+            </span>
+          </div>
+
+          {placement.rotated && <span className="pointer-events-none absolute bottom-1 right-1 text-[8px] font-bold text-blue-600">↻</span>}
         </div>;
       })}
     </div></div>
