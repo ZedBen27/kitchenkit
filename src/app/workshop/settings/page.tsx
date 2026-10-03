@@ -24,13 +24,12 @@ type WorkshopSettings = {
 };
 
 const defaults: WorkshopSettings = {
-  a: '5.3', b: '1.7', b2: '3.4', c: '4', t: '', r: '',
-  resin_width: '2.44', resin_height: '1.22', aluco_width: '2.44', aluco_height: '1.22', kerf: '0.003',
-  ouvrant_length: '6', profile_1_depart_length: '6', profile_2_depart_long_length: '6', profile_2_depart_short_length: '6',
+  a: '5.3', b: '1.7', b2: '3.4', c: '0.4', t: '', r: '',
+  resin_width: '244', resin_height: '122', aluco_width: '244', aluco_height: '122', kerf: '0.3',
+  ouvrant_length: '600', profile_1_depart_length: '600', profile_2_depart_long_length: '600', profile_2_depart_short_length: '600',
 };
 
 const cmToM = (value: string) => Number(value) / 100;
-const mmToM = (value: string) => Number(value) / 1000;
 const displayNumber = (value: number) => String(Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000);
 
 export default function WorkshopSettingsPage() {
@@ -68,18 +67,18 @@ export default function WorkshopSettingsPage() {
             a: displayNumber(Number(data.a) * 100),
             b: displayNumber(Number(data.b) * 100),
             b2: displayNumber(Number(data.b2) * 100),
-            c: displayNumber(Number(data.c) * 1000),
+            c: displayNumber(Number(data.c) * 100),
             t: data.t == null ? '' : displayNumber(Number(data.t) * 100),
             r: data.r == null ? '' : displayNumber(Number(data.r) * 100),
-            resin_width: displayNumber(Number(data.resin_width)),
-            resin_height: displayNumber(Number(data.resin_height)),
-            aluco_width: displayNumber(Number(data.aluco_width)),
-            aluco_height: displayNumber(Number(data.aluco_height)),
-            kerf: displayNumber(Number(data.kerf)),
-            ouvrant_length: data.ouvrant_length == null ? '6' : displayNumber(Number(data.ouvrant_length)),
-            profile_1_depart_length: data.profile_1_depart_length == null ? '6' : displayNumber(Number(data.profile_1_depart_length)),
-            profile_2_depart_long_length: data.profile_2_depart_long_length == null ? '6' : displayNumber(Number(data.profile_2_depart_long_length)),
-            profile_2_depart_short_length: data.profile_2_depart_short_length == null ? '6' : displayNumber(Number(data.profile_2_depart_short_length)),
+            resin_width: displayNumber(Number(data.resin_width) * 100),
+            resin_height: displayNumber(Number(data.resin_height) * 100),
+            aluco_width: displayNumber(Number(data.aluco_width) * 100),
+            aluco_height: displayNumber(Number(data.aluco_height) * 100),
+            kerf: displayNumber(Number(data.kerf) * 100),
+            ouvrant_length: data.ouvrant_length == null ? '600' : displayNumber(Number(data.ouvrant_length) * 100),
+            profile_1_depart_length: data.profile_1_depart_length == null ? '600' : displayNumber(Number(data.profile_1_depart_length) * 100),
+            profile_2_depart_long_length: data.profile_2_depart_long_length == null ? '600' : displayNumber(Number(data.profile_2_depart_long_length) * 100),
+            profile_2_depart_short_length: data.profile_2_depart_short_length == null ? '600' : displayNumber(Number(data.profile_2_depart_short_length) * 100),
           });
         }
       } catch (err) {
@@ -106,18 +105,18 @@ export default function WorkshopSettingsPage() {
         a: cmToM(settings.a),
         b: cmToM(settings.b),
         b2: cmToM(settings.b2),
-        c: mmToM(settings.c),
+        c: cmToM(settings.c),
         t: settings.t.trim() ? cmToM(settings.t) : null,
         r: settings.r.trim() ? cmToM(settings.r) : null,
-        resin_width: Number(settings.resin_width),
-        resin_height: Number(settings.resin_height),
-        aluco_width: Number(settings.aluco_width),
-        aluco_height: Number(settings.aluco_height),
-        kerf: Number(settings.kerf),
-        ouvrant_length: settings.ouvrant_length.trim() ? Number(settings.ouvrant_length) : null,
-        profile_1_depart_length: settings.profile_1_depart_length.trim() ? Number(settings.profile_1_depart_length) : null,
-        profile_2_depart_long_length: settings.profile_2_depart_long_length.trim() ? Number(settings.profile_2_depart_long_length) : null,
-        profile_2_depart_short_length: settings.profile_2_depart_short_length.trim() ? Number(settings.profile_2_depart_short_length) : null,
+        resin_width: cmToM(settings.resin_width),
+        resin_height: cmToM(settings.resin_height),
+        aluco_width: cmToM(settings.aluco_width),
+        aluco_height: cmToM(settings.aluco_height),
+        kerf: cmToM(settings.kerf),
+        ouvrant_length: settings.ouvrant_length.trim() ? cmToM(settings.ouvrant_length) : null,
+        profile_1_depart_length: settings.profile_1_depart_length.trim() ? cmToM(settings.profile_1_depart_length) : null,
+        profile_2_depart_long_length: settings.profile_2_depart_long_length.trim() ? cmToM(settings.profile_2_depart_long_length) : null,
+        profile_2_depart_short_length: settings.profile_2_depart_short_length.trim() ? cmToM(settings.profile_2_depart_short_length) : null,
         updated_at: new Date().toISOString(),
       };
       const { error: saveError } = await supabase.from('workshop_settings').upsert(payload, { onConflict: 'organization_id' });
@@ -154,36 +153,36 @@ export default function WorkshopSettingsPage() {
         {loading ? <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">جارٍ تحميل الإعدادات...</div> : (
           <form onSubmit={save} className="space-y-6">
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <SectionTitle title="إعدادات التصنيع" description="الوحدة المعروضة cm، باستثناء C بالـmm." />
+              <SectionTitle title="إعدادات التصنيع" description="الوحدة المعروضة cm في جميع القياسات الخطية." />
               <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <NumberField label="A — إزاحة Résine" value={settings.a} unit="cm" onChange={(v) => update('a', v)} required />
                 <NumberField label="B — الباب الواحد" value={settings.b} unit="cm" onChange={(v) => update('b', v)} required />
                 <NumberField label="B2 — البابين" value={settings.b2} unit="cm" onChange={(v) => update('b2', v)} required />
-                <NumberField label="C — Aluco" value={settings.c} unit="mm" onChange={(v) => update('c', v)} required />
+                <NumberField label="C — Aluco" value={settings.c} unit="cm" onChange={(v) => update('c', v)} required />
                 <NumberField label="T — الرفوف (L)" value={settings.t} unit="cm" onChange={(v) => update('t', v)} />
                 <NumberField label="R — الرفوف (P)" value={settings.r} unit="cm" onChange={(v) => update('r', v)} />
               </div>
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <SectionTitle title="أطوال القضبان" description="طول القضيب القياسي الذي تُشترى منه المقاطع. الوحدة بالمتر، وتُحفظ هذه القيم كإعدادات عامة للورشة." />
+              <SectionTitle title="أطوال القضبان" description="طول القضيب القياسي الذي تُشترى منه المقاطع. العرض في الواجهة بالسنتيمتر، مع الحفاظ على التخزين الداخلي بالمتر." />
               <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <NumberField label="Ouvrant" value={settings.ouvrant_length} unit="m" onChange={(v) => update('ouvrant_length', v)} />
-                <NumberField label="1Départ" value={settings.profile_1_depart_length} unit="m" onChange={(v) => update('profile_1_depart_length', v)} />
-                <NumberField label="2Départs Long" value={settings.profile_2_depart_long_length} unit="m" onChange={(v) => update('profile_2_depart_long_length', v)} />
-                <NumberField label="2Départs Court" value={settings.profile_2_depart_short_length} unit="m" onChange={(v) => update('profile_2_depart_short_length', v)} />
+                <NumberField label="Ouvrant" value={settings.ouvrant_length} unit="cm" onChange={(v) => update('ouvrant_length', v)} />
+                <NumberField label="1Départ" value={settings.profile_1_depart_length} unit="cm" onChange={(v) => update('profile_1_depart_length', v)} />
+                <NumberField label="2Départs Long" value={settings.profile_2_depart_long_length} unit="cm" onChange={(v) => update('profile_2_depart_long_length', v)} />
+                <NumberField label="2Départs Court" value={settings.profile_2_depart_short_length} unit="cm" onChange={(v) => update('profile_2_depart_short_length', v)} />
               </div>
             </section>
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <SectionTitle title="إعدادات الألواح" description="الأبعاد الفعلية للوح المستخدمة في Cut Optimizer." />
+              <SectionTitle title="إعدادات الألواح" description="الأبعاد الفعلية للوح المستخدمة في Cut Optimizer، مع عرض القياسات بالسنتيمتر." />
               <div className="mt-6 grid gap-5 lg:grid-cols-2">
                 <MaterialCard title="Résine" width={settings.resin_width} height={settings.resin_height} setWidth={(v) => update('resin_width', v)} setHeight={(v) => update('resin_height', v)} />
                 <MaterialCard title="Aluco" width={settings.aluco_width} height={settings.aluco_height} setWidth={(v) => update('aluco_width', v)} setHeight={(v) => update('aluco_height', v)} />
               </div>
               <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:flex sm:items-center sm:justify-between sm:gap-6">
                 <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-white text-slate-700"><Ruler className="h-5 w-5" /></span><div><p className="text-sm font-black">سماكة القطع / Kerf</p><p className="mt-0.5 text-xs text-slate-500">المسافة التي تستهلكها شفرة القص بين قطعتين.</p></div></div>
-                <div className="mt-4 w-full sm:mt-0 sm:max-w-[220px]"><NumberField label="Kerf" value={settings.kerf} unit="m" onChange={(v) => update('kerf', v)} required /></div>
+                <div className="mt-4 w-full sm:mt-0 sm:max-w-[220px]"><NumberField label="Kerf" value={settings.kerf} unit="cm" onChange={(v) => update('kerf', v)} required /></div>
               </div>
             </section>
 
@@ -207,5 +206,5 @@ function NumberField({ label, value, unit, onChange, required }: { label: string
 }
 
 function MaterialCard({ title, width, height, setWidth, setHeight }: { title: string; width: string; height: string; setWidth: (value: string) => void; setHeight: (value: string) => void }) {
-  return <div className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center justify-between"><h3 className="font-black">{title}</h3><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">m · عرض × ارتفاع</span></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><NumberField label="العرض" value={width} unit="m" onChange={setWidth} required /><NumberField label="الارتفاع" value={height} unit="m" onChange={setHeight} required /></div></div>;
+  return <div className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center justify-between"><h3 className="font-black">{title}</h3><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">cm · عرض × ارتفاع</span></div><div className="mt-4 grid gap-4 sm:grid-cols-2"><NumberField label="العرض" value={width} unit="cm" onChange={setWidth} required /><NumberField label="الارتفاع" value={height} unit="cm" onChange={setHeight} required /></div></div>;
 }
