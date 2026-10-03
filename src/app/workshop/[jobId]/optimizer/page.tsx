@@ -352,7 +352,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function SheetCard({ sheet }: { sheet: OptimizationResult['sheets'][number] }) {
   return <article className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/50 transition hover:border-slate-300 hover:shadow-md">
     <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3"><div><p className="text-sm font-black">لوح #{sheet.sheetIndex}</p><p className="mt-0.5 text-[11px] text-slate-400">{sheet.width.toFixed(3)} × {sheet.height.toFixed(3)} m</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700">{(sheet.utilization * 100).toFixed(1)}%</span></div>
-    <div className="p-3 sm:p-4"><div className="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100" style={{ aspectRatio: `${sheet.width} / ${sheet.height}` }}>
+    <div className="p-3 sm:p-4"><div className="relative w-full overflow-hidden rounded-none border border-slate-300 bg-slate-100" style={{ aspectRatio: `${sheet.width} / ${sheet.height}` }}>
       <div className="pointer-events-none absolute inset-x-0 top-1.5 z-10 text-center text-[9px] font-bold text-slate-400">{sheet.width.toFixed(3)} × {sheet.height.toFixed(3)} m</div>
       {sheet.placements.map((placement) => {
         const layout = getLabelLayout({ width: placement.width, height: placement.height, label: placement.label, dimensionText: `${placement.width.toFixed(3)} × ${placement.height.toFixed(3)} m` });
