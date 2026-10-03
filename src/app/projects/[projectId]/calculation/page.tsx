@@ -9,6 +9,8 @@ type DbBox = { id: string; number: number; structure: 'ET' | 'SET' | 'Eco'; box_
 type SettingsRow = { a: number; b: number; b2: number; c: number; t: number | null; r: number | null; handles_enabled: boolean };
 type Part = ReturnType<typeof calculateBox>['parts'][number];
 
+const formatCm = (meters: number) => `${Number(meters * 100).toFixed(2).replace(/\.00$/, '')} cm`;
+
 export default function CalculationPage() {
   const params = useParams<{ projectId: string }>();
   const router = useRouter();
@@ -189,7 +191,7 @@ function BoxSection({ number, box, parts }: { number: number; box: DbBox; parts:
       <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-[hsl(var(--muted))] px-4 py-4">
         <div>
           <h3 className="font-semibold">الصندوق #{number}</h3>
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">{Number(box.length).toFixed(3)} × {Number(box.height).toFixed(3)} × {Number(box.depth).toFixed(3)} m · {box.structure} · {box.box_type}</p>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">{formatCm(box.length)} × {formatCm(box.height)} × {formatCm(box.depth)} · {box.structure} · {box.box_type}</p>
         </div>
         <span className="rounded-full border bg-[hsl(var(--card))] px-3 py-1 text-xs font-medium">{parts.length} أنواع قطع</span>
       </div>
@@ -216,8 +218,8 @@ function PartsTable({ parts }: { parts: Part[] }) {
             <tr key={`${p.material}-${p.partType}-${p.length}-${p.width ?? ''}-${i}`} className="border-t">
               <td className="p-3">{p.material}</td>
               <td className="p-3 font-medium">{p.partType}</td>
-              <td className="p-3 whitespace-nowrap">{p.length.toFixed(3)} m</td>
-              <td className="p-3 whitespace-nowrap">{p.width === undefined ? '—' : `${p.width.toFixed(3)} m`}</td>
+              <td className="p-3 whitespace-nowrap" dir="ltr">{formatCm(p.length)}</td>
+              <td className="p-3 whitespace-nowrap" dir="ltr">{p.width === undefined ? '—' : formatCm(p.width)}</td>
               <td className="p-3 font-semibold">{p.quantity}</td>
             </tr>
           ))}
