@@ -34,7 +34,7 @@ export default function Navigation() {
       </nav>
       <div className="sidebar-bottom">
         <Link href="/workshop/settings" className={pathname.startsWith('/workshop/settings') ? 'active' : ''}>إعدادات الورشة</Link>
-        <Link href="/settings" className={pathname === '/settings' ? 'active' : ''}>الإعدادات</Link>
+        <Link href="/settings" className={pathname === '/settings' ? 'active' : ''}>إعدادات الحساب</Link>
         <button onClick={signOut}>تسجيل الخروج</button>
       </div>
     </aside>
