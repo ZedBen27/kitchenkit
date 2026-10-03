@@ -119,11 +119,14 @@ export default function CutOptimizerPage() {
 
   const resinParts = useMemo(() => partsFromCalculations(calculated, 'Résine'), [calculated]);
   const alucoParts = useMemo(() => partsFromCalculations(calculated, 'Aluco'), [calculated]);
-  const totalPartQuantity = useMemo(
-    () => calculated.reduce((sum, part) => sum + Math.max(0, Number(part.quantity) || 0), 0),
-    [calculated],
+  const resinPartQuantity = useMemo(
+    () => resinParts.reduce((sum, part) => sum + Math.max(0, Number(part.quantity) || 0), 0),
+    [resinParts],
   );
-  const totalSheets = (resin?.sheets.length || 0) + (aluco?.sheets.length || 0);
+  const alucoPartQuantity = useMemo(
+    () => alucoParts.reduce((sum, part) => sum + Math.max(0, Number(part.quantity) || 0), 0),
+    [alucoParts],
+  );
   const totalWaste = (resin?.totalWasteArea || 0) + (aluco?.totalWasteArea || 0);
 
   useEffect(() => {
@@ -222,11 +225,11 @@ export default function CutOptimizerPage() {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[520px]">
-              <MiniStat icon={<SquareStack className="h-4 w-4" />} label="قطع" value={totalPartQuantity.toLocaleString('fr-FR')} />
-              <MiniStat icon={<Layers3 className="h-4 w-4" />} label="الألواح" value={totalSheets.toLocaleString('fr-FR')} />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:min-w-[620px]">
+              <MaterialSummary title="Résine" sheets={resin?.sheets.length || 0} pieces={resinPartQuantity} />
+              <MaterialSummary title="Aluco" sheets={aluco?.sheets.length || 0} pieces={alucoPartQuantity} />
               <MiniStat icon={<Maximize2 className="h-4 w-4" />} label="المواد" value="2" />
-              <MiniStat icon={<Trash2 className="h-4 w-4" />} label="الهدر" value={`${totalWaste.toFixed(2)} m²`} />
+              <MiniStat icon={<Trash2 className="h-4 w-4" />} label="الهدر الإجمالي" value={`${totalWaste.toFixed(2)} m²`} />
             </div>
           </div>
         </header>
@@ -268,6 +271,10 @@ export default function CutOptimizerPage() {
 
 function MiniStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3"><div className="flex items-center gap-1.5 text-xs font-bold text-slate-500">{icon}{label}</div><p className="mt-1.5 truncate text-lg font-black tracking-tight text-slate-900">{value}</p></div>;
+}
+
+function MaterialSummary({ title, sheets, pieces }: { title: string; sheets: number; pieces: number }) {
+  return <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3"><div className="flex items-center gap-1.5 text-xs font-black text-slate-600"><Layers3 className="h-4 w-4" />{title}</div><div className="mt-1.5 flex items-end justify-between gap-2"><div><p className="text-[10px] font-semibold text-slate-400">الألواح</p><p className="text-lg font-black tracking-tight text-slate-900">{sheets.toLocaleString('fr-FR')}</p></div><div className="text-right"><p className="text-[10px] font-semibold text-slate-400">القطع</p><p className="text-sm font-black text-slate-700">{pieces.toLocaleString('fr-FR')}</p></div></div></div>;
 }
 
 function MaterialSettings({ title, width, height, setWidth, setHeight }: { title: string; width: string; height: string; setWidth: (value: string) => void; setHeight: (value: string) => void }) {
