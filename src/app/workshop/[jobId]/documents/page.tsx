@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
@@ -73,6 +74,7 @@ export default function WorkshopDocumentsPage() {
     <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">3. Aluco / Ouvrant</h2><div className="overflow-x-auto rounded-lg border"><table className="w-full text-sm"><thead className="bg-[hsl(var(--muted))]"><tr><th className="p-3 text-right">المادة</th><th className="p-3 text-right">القطعة</th><th className="p-3 text-right">L</th><th className="p-3 text-right">H</th><th className="p-3 text-right">Qté</th></tr></thead><tbody>{[...alucoRows, ...profileRows.filter(p => p.part_type === 'Ouvrant H' || p.part_type === 'Ouvrant L')].map((p, i) => <tr key={i} className="border-t"><td className="p-3">{p.material}</td><td className="p-3">{p.part_type}</td><td className="p-3">{Number(p.length).toFixed(3)} m</td><td className="p-3">{p.width == null ? '—' : `${Number(p.width).toFixed(3)} m`}</td><td className="p-3">{p.quantity}</td></tr>)}</tbody></table></div></section>
     <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><h2 className="mb-4 text-xl font-semibold">4. الإكسسوارات</h2><div className="flex flex-wrap gap-2">{accessories.map((a, i) => <span key={`${a.accessory_type}-${i}`} className="rounded-md border px-3 py-2 text-sm">{a.accessory_type}: <strong>{a.quantity}</strong></span>)}</div></section>
     {(resinPlans.length > 0 || alucoPlans.length > 0) && <section className="mb-6 rounded-xl border bg-[hsl(var(--card))] p-6 shadow-sm print:shadow-none"><div className="mb-5"><h2 className="text-xl font-semibold">5. مخططات القص المحفوظة</h2><p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">هذه هي نفس المخططات التي تم حفظها من صفحة Cut Optimizer، مع الحفاظ على النسبة الحقيقية بين أبعاد اللوح والقطع.</p></div>{resinPlans.length > 0 && <SavedCutPlanGroup title="Résine" plans={resinPlans}/>} {alucoPlans.length > 0 && <SavedCutPlanGroup title="Aluco" plans={alucoPlans}/>}</section>}
+    <div className="mt-8 flex justify-center print:hidden"><Link href={`/workshop/${params.jobId}/purchases`} className="inline-flex items-center justify-center rounded-2xl bg-[hsl(var(--primary))] px-7 py-3 text-sm font-black text-[hsl(var(--primary-foreground))] shadow-sm transition hover:opacity-90">قائمة السلع</Link></div>
   </div></main>;
 }
 
