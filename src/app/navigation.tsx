@@ -7,7 +7,6 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/browser';
 const items = [
   { href: '/', label: 'لوحة التحكم', match: (p: string) => p === '/' },
   { href: '/projects', label: 'جميع المشاريع', match: (p: string) => p.startsWith('/projects') },
-  { href: '/workshop/settings', label: 'إعدادات الورشة', match: (p: string) => p.startsWith('/workshop/settings') },
   { href: '/workshop/documents', label: 'وثائق الورشة', match: (p: string) => p.startsWith('/workshop/documents') || /\/workshop\/[^/]+\/documents/.test(p) },
   { href: '/workshop/optimizer', label: 'تحسين القص', match: (p: string) => p.startsWith('/workshop/optimizer') || /\/workshop\/[^/]+\/optimizer/.test(p) },
   { href: '/workshop/purchases', label: 'قائمة السلع', match: (p: string) => p.startsWith('/workshop/purchases') || /\/workshop\/[^/]+\/purchases/.test(p) },
@@ -34,6 +33,7 @@ export default function Navigation() {
         ))}
       </nav>
       <div className="sidebar-bottom">
+        <Link href="/workshop/settings" className={pathname.startsWith('/workshop/settings') ? 'active' : ''}>إعدادات الورشة</Link>
         <Link href="/settings" className={pathname === '/settings' ? 'active' : ''}>الإعدادات</Link>
         <button onClick={signOut}>تسجيل الخروج</button>
       </div>
